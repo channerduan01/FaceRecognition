@@ -5,6 +5,22 @@ import matplotlib.pyplot as plt
 from numba import double
 from numba.decorators import jit, autojit
 from timer import Timer
+import time
+
+
+def drawFigures(params,width=6):
+    length = len(params)
+    if (length < 2 or length%2 == 1 or width < 1):
+        raise Exception("illegal input")
+    for i in range(0,length,2):
+        if (i%(width*2) == 0):
+            plt.figure()
+        plt.subplot(100+width*10+(i%(width*2))/2+1)
+        plt.title(params[i])
+        plt.axis('off')
+        plt.imshow(params[i+1])
+    return
+    
 
 def getHaarFeatureNum((minwidth, minheight, stepwidth, stepheight, stridex, stridey), window_size):
     num = 0
@@ -130,8 +146,8 @@ def adaboostWeakSelection(w,m,table_sorted,train_label):
     t_n = np.sum(w[m:])
     # test code
 #    for k in [getHaarFeatureIndex(haar_map, (0, 0, 18, 10, 17, 8))]: 
-    for k in [getHaarFeatureIndex(haar_map, (1, 0, 11, 10, 3, 7))]:     
-#    for k in range(K):
+#    for k in [getHaarFeatureIndex(haar_map, (1, 0, 11, 10, 3, 7))]:     
+    for k in range(K):
         tmp = table_sorted[k,:]
         s_p = 0
         s_n = 0
@@ -149,23 +165,25 @@ def adaboostWeakSelection(w,m,table_sorted,train_label):
                     beat_p = True
                     best_err = err_p
                 else:
-                    print '%.8f' %err_n
                     beat_p = False
                     best_err = err_n    
     return (best_k,best_n,beat_p,best_err)
 adaboostWeakSelection_numba = autojit(adaboostWeakSelection)
-def checkImgByHaarWeakClassifier(ii, (haar_type, has_trans, x, y, w, h), p_, thre):
-    value = 0
-    if haar_type == 0:
-        value = calcuBasis2Haar(ii, has_trans, x, y, w, h)
-    elif haar_type == 1:
-        value = calcuGap3Haar(ii, has_trans, x, y, w, h)
-    else:
-        value = calcuSquare4Haar(ii, x, y, w, h)
+def calcuSpecificHaarFeature(iis, (haar_type, has_trans, x, y, w, h)):
+    features = np.zeros((len(iis)),dtype=np.int)
+    for i in range(len(iis)):
+        if haar_type == 0:
+            features[i] = calcuBasis2Haar(iis[i], has_trans, x, y, w, h)
+        elif haar_type == 1:
+            features[i] = calcuGap3Haar(iis[i], has_trans, x, y, w, h)
+        else:
+            features[i] = calcuSquare4Haar(iis[i], x, y, w, h)        
+    return features
+def checkByHaarWeakClassifier(values, p_, thre):
     if p_:
-        return value <= thre
+        return values <= thre
     else:
-        return value > thre
+        return values > thre
 def drawHaarFeatureOnImage(haar_map,k):
     (haar_type, has_trans, x, y, w, h) = haar_map[k]
     # raw image start from 0, integral start from 1, that is different
@@ -213,36 +231,43 @@ if not 'table_sorted' in dir():
             table_sorted[i,:] = np.argsort(table[i,:])
     print 'create table_sorted: %.2fs' % t.secs
 #----------------------------------------- Adaboost
-# T indicates the feature number within this Adaboost
-T = 1
-m = np.sum(train_label)   # m can be the threshold of postive or negative data
-l = N - m
-w = np.zeros((N),np.float)
-w[:m] = 0.5/m
-w[m:] = 0.5/l
-# Simple Test
-with Timer() as t:
-    (best_k,best_n,beat_p,best_err) = adaboostWeakSelection_numba(w,m,table_sorted,train_label)
-print 'select weak classifier: %.2fs' % t.secs
-drawHaarFeatureOnImage(haar_map,best_k)
-if best_n == N-1:
-    thre = 1.0 * table[best_k,table_sorted[best_k,best_n]]
-else:
-    thre = 0.5 * table[best_k,table_sorted[best_k,best_n]] + 0.5 * table[best_k,table_sorted[best_k,best_n+1]]
-#check_ = np.zeros((N), dtype=np.bool)
-#for i in range(N):
-#    check_[i] = checkImgByHaarWeakClassifier(train_data[i,:,:],haar_map[best_k], beat_p, thre)
-#print 'train correct rate: %.2f (expected rate: %.2f)' %(float(np.sum(check_ == train_label))/N, 1.0-best_err)
-
+#T = 200  # T indicates the feature number within this Adaboost
+#adaboost = []
+#m = np.sum(train_label)   # m can be the threshold of postive or negative data
+#l = N - m
+#w = np.zeros((N),np.float)
+#w[:m] = 0.5/m
+#w[m:] = 0.5/l
+#start_stamp = time.time()
 #for i in range(T):
-#    1==1
+#    w = w/np.sum(w)
+#    (best_k,best_n,beat_p,best_err) = adaboostWeakSelection_numba(w, m, table_sorted, train_label)
+#    print 'strong-classifier trained(%d): %.1f%% elapsed:%.0fs' %(i+1, float(i+1)/T*100.0, time.time()-start_stamp)
+##    drawHaarFeatureOnImage(haar_map,best_k)    # test code
+#    if best_n == N-1:
+#        thre = table[best_k,table_sorted[best_k,best_n]]
+#    else:
+#        thre = 0.5 * table[best_k,table_sorted[best_k,best_n]] + 0.5 * table[best_k,table_sorted[best_k,best_n+1]]
+#        thre = int(np.round(thre))      
+#    check_res = checkByHaarWeakClassifier(calcuSpecificHaarFeature(train_data,haar_map[best_k]), beat_p, thre)
+#    print 'c-rate: %.3f (weighted rate: %.2f)' %(float(np.sum(check_res == train_label))/N, 1.0-best_err)    
+#    w[check_res == train_label] = w[check_res == train_label] * (best_err/(1.0-best_err))
+#    adaboost.append((np.log((1.0-best_err)/best_err), thre, best_k, beat_p))
+#
+#check_tmp = np.zeros((N), dtype=np.float)
+#a_sum = 0.0
+#for (a,thre,best_k,beat_p) in adaboost[5:]:
+#    a_sum = a_sum + a
+#    check_tmp = check_tmp + a * checkByHaarWeakClassifier(calcuSpecificHaarFeature(train_data,haar_map[best_k]), beat_p, thre).astype(np.float)
+#    
+#check_res = check_tmp >= 0.5*a_sum
+#print '!strong-classifier(%d) correct rate: %.1f' %(i+1, float(np.sum(check_res == train_label))/N)
 
-#test_best_k = getHaarFeatureIndex(haar_map,(0,0,17,8,18,10))
-
-
-
-
-
+list_ = []
+for i_ in np.where(w>0.002)[0]:
+    list_.append('%d (%.1f)' %(i_,w[i_]*100))
+    list_.append(reverseIntegral(train_data[i_,:,:]))
+drawFigures(list_)
 
 
 
