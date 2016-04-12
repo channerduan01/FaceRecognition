@@ -1,8 +1,6 @@
 import numpy as np
 from numpy import genfromtxt
-from PIL import Image
 import matplotlib.pyplot as plt
-from numba import double
 from numba.decorators import jit, autojit
 from timer import Timer
 import time
@@ -39,12 +37,13 @@ def getHaarFeatureMap(list_haars, window_size):
         stepheight = list_haars[i][3]
         stridex = list_haars[i][4]
         stridey = list_haars[i][5]
+        is_trans = list_haars[i][6]
         window_size_l = window_size+1
         for w in range(minwidth,window_size_l,stepwidth):
             for h in range(minheight,window_size_l,stepheight):
                 for x in range(w,window_size_l,stridex):
                     for y in range(h,window_size_l,stridey):
-                        if i == 0 or i == 1:
+                        if is_trans:
                             list_haar.append((i,0,x,y,w,h))
                             list_haar.append((i,1,x,y,w,h))
                         else:
@@ -133,7 +132,6 @@ def reverseIntegral(ii):
         for y in range(1, ii.shape[1]):
             image[x-1,y-1] = calcuRectangle(ii,y,x,1,1)
     return image
-
     
 # Core of Adaptive Boost, select the best weak classifier
 # w is the weight for training data now
@@ -173,7 +171,7 @@ def adaboostWeakSelection(w,table_sorted,train_label,N):
                     best_err = err_n
     return (best_k,best_n,beat_p,best_err)
 adaboostWeakSelection_numba = autojit(adaboostWeakSelection)
-
+# main training process for Adaptive Boost
 def adaboostTrain(deltaT, table_sorted, train_label, adaboost=[], w=[], w_list=[]):
     N = len(train_label)    
     m = np.sum(train_label)
@@ -185,36 +183,39 @@ def adaboostTrain(deltaT, table_sorted, train_label, adaboost=[], w=[], w_list=[
         w_list.append(w)
     start_stamp = time.time()
     for i in range(deltaT):
-        w_list.append(w.copy())
         w = w/np.sum(w)
         (best_k,best_n,beat_p,best_err) = adaboostWeakSelection_numba(w, table_sorted, train_label, N)
-        print 'strong-classifier trained(%d): %.1f%% elapsed:%.0fs' %(i+1, float(i+1)/deltaT*100.0, time.time()-start_stamp)
+        print 'adaboost: %.1f%% (%d) elapsed:%.0fs' %(float(i+1)/deltaT*100.0, len(adaboost), time.time()-start_stamp)
         if best_n == N-1:
             thre = table[best_k,table_sorted[best_k,best_n]]
         else:
             thre = 0.5 * table[best_k,table_sorted[best_k,best_n]] + 0.5 * table[best_k,table_sorted[best_k,best_n+1]]
             thre = int(np.round(thre))
-        print '{\nbest_k = %d,\nbest_n = %d,\nbeat_p = %d,\nbest_err = %f, \nthre = %f\n}' %(best_k,best_n,beat_p,best_err,thre)
-        check_res = checkByHaarWeakClassifier(calcuSpecificHaarFeature(train_data,haar_map[best_k]), beat_p, thre)
-        check_res1 = table[best_k] <= thre
-        print 'c-rate: %.3f, r-t match:%.2f, weighted rate: %.2f' %(float(np.sum(check_res == train_label))/N, 
-                                 float(np.sum(check_res == check_res1))/N*100, 1.0-best_err)    
-        w_list.append(w.copy())
+#        print '{\nbest_k = %d\nbest_n = %d\nbeat_p = %d\nthre = %f\nbest_err = %f\n}' %(best_k,best_n,beat_p,best_err,thre)
+        check_res = checkByHaarWeakClassifier(calcuSpecificHaarFeatures(train_data,haar_map[best_k]), beat_p, thre)
+        if beat_p:      
+            check_res1 = table[best_k] <= thre
+        else:
+            check_res1 = table[best_k] > thre
+        print '   c-rate: %.3f\n   r-t match:%.1f%%\n   weighted rate: %.2f' \
+            %(float(np.sum(check_res == train_label))/N, \
+              float(np.sum(check_res == check_res1))/N*100, 1.0-best_err) 
         w[check_res == train_label] = w[check_res == train_label] * (best_err/(1.0-best_err))
         w_list.append(w.copy())
         adaboost.append((np.log((1.0-best_err)/best_err), thre, best_k, beat_p))
-    return adaboost, w, w_list
+        print '   adaboost-rate: %.6f%%' \
+            %(float(np.sum(checkByAdabost(adaboost, train_data, train_label, N) == train_label))/N*100)       
+    return adaboost, w_list
 
 def checkByAdabost(adaboost, data, label, N):
     check_tmp = np.zeros((N), dtype=np.float)
     a_sum = 0.0
     for (a,thre,best_k,beat_p) in adaboost:
         a_sum = a_sum + a
-        check_tmp = check_tmp + a * checkByHaarWeakClassifier(calcuSpecificHaarFeature(data,haar_map[best_k]), beat_p, thre).astype(np.float)
-    check_res = check_tmp >= 0.5*a_sum
-    print '!strong-classifier(%d) correct rate: %.1f' %(len(adaboost), float(np.sum(check_res == label))/N)
+        check_tmp = check_tmp + a * checkByHaarWeakClassifier(calcuSpecificHaarFeatures(data,haar_map[best_k]), beat_p, thre).astype(np.float)
+    return check_tmp >= 0.5*a_sum
 
-def calcuSpecificHaarFeature(ii, (haar_type, has_trans, x, y, w, h)):
+def calcuSingleHaar(ii, (haar_type, has_trans, x, y, w, h)):
     if haar_type == 0:
         return calcuBasis2Haar(ii, has_trans, x, y, w, h)
     elif haar_type == 1:
@@ -225,7 +226,7 @@ def calcuSpecificHaarFeatures(iis, (haar_type, has_trans, x, y, w, h)):
     size = len(iis)
     features = np.zeros((size), np.int)
     for i in range(size):
-        features[i] = calcuSpecificHaarFeature(iis[i], (haar_type, has_trans, x, y, w, h))
+        features[i] = calcuSingleHaar(iis[i], (haar_type, has_trans, x, y, w, h))
     return features
 def checkByHaarWeakClassifier(values, p_, thre):
     if p_:
@@ -245,25 +246,30 @@ def drawHaarFeatureOnImage(haar_map,k):
     plt.figure()
     plt.imshow(image) 
 
-if not 'train_data' in dir() or not 'train_label' in dir():
-    file_path = 'face_train_channer.csv'  # 'svm.train.normgrey'
+def loaddata(file_path):
     tmp = genfromtxt(open(file_path,'r'), delimiter=' ', dtype='f8', skip_header=2)
-    train_data = tmp[:,0:-1]
-    window_size = int(np.sqrt(train_data.shape[1]))
-    train_data = train_data.reshape((len(train_data),window_size,window_size))
-    train_label = tmp[:,-1]>0
-    tmp = train_data
-    train_data = np.zeros((len(tmp),window_size+1,window_size+1),dtype=np.int)
+    data = tmp[:,0:-1]
+    window_size = int(np.sqrt(data.shape[1]))
+    data = data.reshape((len(data),window_size,window_size))
+    label = tmp[:,-1]>0
+    tmp = data
+    data = np.zeros((len(tmp),window_size+1,window_size+1),dtype=np.int)
     for i in range(len(tmp)):
-        train_data[i,:,:] = calcuIntegral(np.round(tmp[i,:,:]*255))     
+        data[i,:,:] = calcuIntegral(np.round(tmp[i,:,:]*255))     
     tmp = None
+    return (data, label, window_size)
+if not 'train_data' in dir() or not 'train_label' in dir():
+#   'face_train_channer.csv'  # my own, larger data set
+    (train_data, train_label, window_size) = loaddata('svm.train.normgrey')  # small data set
+    (test_data, test_label, window_size) = loaddata('svm.test.normgrey')  # small data set
 
 plt.gray()
 #plt.imshow(reverseIntegral(train_data[77,:,:])) # test integral
-#----------------------------------------- create basic feature table
+#---------------------------------------------------------- create basic feature table
 if not 'table' in dir():
-    haars = [(1,2,1,2,1,1),(3,1,3,1,1,1),(2,2,2,2,1,1)]
-    haar_map = getHaarFeatureMap(haars,window_size)   # The map to original haar setting
+    haars = [(1,2,1,2,1,1,1),(3,1,3,1,1,1,1),(2,2,2,2,1,1,0)]
+    # map to original haar setting
+    haar_map = getHaarFeatureMap(haars,window_size)   
     K = len(haar_map)
     N = len(train_data)
     with Timer() as t:
@@ -271,46 +277,59 @@ if not 'table' in dir():
         for i in range(N):
             calcuHaarFeature_numba(table[:,i],train_data[i,:,:],haars,window_size)
     print 'create table: %.2fs' % t.secs
-#----------------------------------------- create sorted table    
+#---------------------------------------------------------- create sorted table    
 if not 'table_sorted' in dir():
     table_sorted = np.zeros_like(table)
     with Timer() as t:
         for i in range(K):
             table_sorted[i,:] = np.argsort(table[i,:])
     print 'create table_sorted: %.2fs' % t.secs
-#----------------------------------------- Adaboost train
-#adaboost, w = adaboostTrain(3, table_sorted, train_label)
-#adaboost, w, w_list = adaboostTrain(5, table_sorted, train_label, adaboost, w)
+#---------------------------------------------------------- Adaboost train
+def drawOutlierOfData(w, threshold, train_data):
+    list_ = []
+    for i_ in np.where(w > threshold)[0]:
+        list_.append('(%.1f)' %(w[i_]*100))
+        list_.append(reverseIntegral(train_data[i_,:,:]))
+    drawFigures(list_)
+def adaboostTesting(adaboost, data, label):
+    N = len(label)
+    for i in range(len(adaboost)):
+        print '%d rate: %.6f%%' %(i, float(np.sum(checkByAdabost(adaboost[:i+1], data, label, N) == label))/N*100)  
+def saveAdaboost(filename, haars, adaboost, w_list):
+    np.save(filename,(haars, adaboost, w_list))
+def loadAdaboost(filename):
+    (haars, adaboost, w_list) = np.load(filename)
+    return (haars, adaboost, w_list)
+filename = None
+#filename = ''
+#filename = 'ada_small_face_test.npy'
+if filename != None:
+    if filename == '':
+        # Simple train
+        adaboost, w_list = adaboostTrain(10, table_sorted, train_label)
+    else:
+        # Load and train    
+        (haars, adaboost, w_list) = loadAdaboost(filename)
+        adaboost, w_list = adaboostTrain(5, table_sorted, train_label, adaboost, w_list[-1], w_list)
+        saveAdaboost(filename, haars, adaboost, w_list)
+## test code 
+#else:
+#    drawHaarFeatureOnImage(haar_map,10022)
+#    drawOutlierOfData(w_list[-1], 0.005, train_data)
+#    adaboostTesting(adaboost, train_data, train_label)   # remember train the adaboost for this test 
+#    adaboostTesting(adaboost, test_data, test_label)
 
-#adaboost1, w1, w_list = adaboostTrain(2, table_sorted, train_label, adaboost, w)
-
-    
-#drawHaarFeatureOnImage(haar_map,best_k)    # test code
-#checkByAdabost(adaboost, train_data, train_label, N)
 
 
 
-#tt = calcuSpecificHaarFeature(train_data,haar_map[best_k])
-#print '%d' %(sum(len(table[best_k]) == tt))
 
-cals = calcuSpecificHaarFeatures(train_data, haar_map[best_k])
 
-#sum_ = 0
-#for i in board_p:
-#    if i in thre_d:
-#        sum_ = sum_ + 1
-#print '%d' %sum_
-#sum_ = 0
-#for i in board_n:
-#    if i in thre_d:
-#        sum_ = sum_ + 1
-#print '%d' %sum_
 
-#list_ = []
-#for i_ in np.where(w>0.002)[0]:
-#    list_.append('%d (%.1f)' %(i_,w[i_]*100))
-#    list_.append(reverseIntegral(train_data[i_,:,:]))
-#drawFigures(list_)
+
+
+
+
+
 
 
 
