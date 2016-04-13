@@ -33,9 +33,18 @@ def obtain_face_data(face_path, window_size):
     face_list = []
     for file_ in face_files:
         face_list.append(change_width(readImage(face_path+file_),window_size))
-    print 'got: %d face images' %(len(face_list))  
+    print 'got: %d face images' %(len(face_list))
     return face_list  
-    
+def obtain_high_quality_face_data():
+    (train_1, train_label_1) = loaddata('svm.train.normgrey')  
+    (train_2, train_label_2) = loaddata('svm.test.normgrey')
+    face_list = []
+    for i in range(np.sum(train_label_1)):
+        face_list.append(train_1[i])
+    for i in range(np.sum(train_label_2)):
+        face_list.append(train_2[i])
+    print 'got: %d face images' %(len(face_list))
+    return face_list
 def obtain_non_face_data(non_face_path, window_size, non_face_restrict_bound = 5
     , min_gap_of_pixel = 10):
     non_face_files = os.listdir(non_face_path)[1:]
@@ -65,7 +74,13 @@ def obtain_non_face_data(non_face_path, window_size, non_face_restrict_bound = 5
     print 'got: %d non-face images (from %d)' %(len(non_face_list), total_num)
     #drawFigures(non_face_list[100000:100040],8)    
     return non_face_list
-
+def loaddata(file_path):
+    tmp = genfromtxt(open(file_path,'r'), delimiter=' ', dtype='f8', skip_header=2)
+    data = tmp[:,0:-1]
+    window_size = int(np.sqrt(data.shape[1]))
+    data = data.reshape((len(data),window_size,window_size))
+    label = tmp[:,-1]>0
+    return (data, label)
 def outputData(filename, (s_face,e_face), (s_non_face,e_non_face)):
     res = np.zeros((e_face+e_non_face-s_face-s_non_face, window_size**2 + 1), np.float)
     with Timer() as t:
@@ -92,15 +107,16 @@ window_size = 19
 #------------------------------------------------ obtain the data
 if not 'face_list' in dir() or not 'non_face_list' in dir() or face_list is None: 
     with Timer() as t:
-        face_list = obtain_face_data(face_path, window_size)
+#        face_list = obtain_face_data(face_path, window_size)
+        face_list = obtain_high_quality_face_data()
         non_face_list = obtain_non_face_data(non_face_path, window_size)
         np.random.shuffle(face_list)
         np.random.shuffle(non_face_list)
-    print 'obtain non-face data: %.2fs' % t.secs
+    print 'obtain face data: %.2fs' % t.secs
 #------------------------------------------------ output part of data
-outputData('face_train_positive.csv', (0,3500), (0,0))
-outputData('face_train_negtive.csv', (0,0), (0,102000))
-outputData('face_test.csv', (3500,6500), (102000,107000))
+outputData('face_train_positive.csv', (0,2000), (0,0))
+outputData('face_train_negtive.csv', (0,0), (0,105000))
+outputData('face_test.csv', (2000,2900), (105000,107000))
 
 
 

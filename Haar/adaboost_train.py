@@ -264,14 +264,15 @@ def loaddata(file_path):
     tmp = None
     return (data, label, window_size)
 if not 'train_data' in dir() or not 'train_label' in dir():
-   # small data set for face
-#    (train_data, train_label, window_size) = loaddata('svm.train.normgrey')  
-#    (test_data, test_label, window_size) = loaddata('svm.test.normgrey')  # small data set
-   # my own, larger data set
+    ## small data set for face
+#    (train, train_label, window_size) = loaddata('svm.train.normgrey')  
+#    (test, test_label, window_size) = loaddata('svm.test.normgrey')  # small data set
+
+##   my own, larger data set
+   (test_data, test_label, window_size) = loaddata('face_test.csv')
    (train_positive, tmp, window_size) = loaddata('face_train_positive.csv')
    (train_negtive, train_negtive_label, window_size) = loaddata('face_train_negtive.csv')
    tmp = None
-   (test_data, test_label, window_size) = loaddata('face_test.csv')
    mark_f = train_positive.shape[0]
    mark_n = 4000
    train_data = np.zeros((mark_f+mark_n,train_positive.shape[1],train_positive.shape[2]), np.int64)
@@ -282,12 +283,12 @@ if not 'train_data' in dir() or not 'train_label' in dir():
    train_label[mark_f:] = False
 
 plt.gray()
-haars = [(1,2,1,2,1,1,1),(3,1,3,1,1,1,1),(2,2,2,2,1,1,0)]
+haars = [(2,4,1,2,1,1,1),(3,2,3,1,1,1,1),(2,2,2,2,1,1,0)]
 #plt.imshow(reverseIntegral(train_data[77,:,:])) # test integral
 #---------------------------------------------------------- create basic feature table
 if not 'base_table' in dir():
     # map to original haar setting
-    haar_map = getHaarFeatureMap(haars,window_size)   
+    haar_map = getHaarFeatureMap(haars,window_size)
     K = len(haar_map)
     N = len(train_data)
     with Timer() as t:
@@ -325,8 +326,8 @@ filename = None
 if not filename is None:
     if filename == '':
         # Simple train
-#        adaboost, w = adaboostTrain(5, base_table, base_table_sorted, train_data, train_label, is_debug=True)
-        adaboost, w = adaboostTrain(12, table_tmp, table_sorted_tmp, train_data_tmp, train_label_tmp, is_debug=True)
+        adaboost, w = adaboostTrain(20, base_table, base_table_sorted, train_data, train_label, is_debug=True)
+#        adaboost, w = adaboostTrain(12, table_tmp, table_sorted_tmp, train_data_tmp, train_label_tmp, is_debug=True)
     else:
         # Load and train
         (haars, adaboost, w) = loadAdaboost(filename)
@@ -376,24 +377,26 @@ def prepareData(cascade):
     else:
         start_stamp = time.time()
         print 'preparing data for %d layer' %len(cascade)
-        fp_data = train_negtive[checkByCascade(cascade_, train_negtive, train_negtive_label)][:mark_f]
-        fp_num = len(fp_data)
-        train_data_tmp = np.zeros((2*fp_num,train_positive.shape[1],train_positive.shape[2]), np.int64)
-        train_data_tmp[:fp_num] = train_data[:fp_num]
-        train_data_tmp[fp_num:] = fp_data
-        train_label_tmp = np.zeros((2*fp_num), np.bool)
-        train_label_tmp[:fp_num] = True
-        train_label_tmp[fp_num:] = False
+        fp_data = train_negtive[checkByCascade(cascade_, train_negtive, train_negtive_label)][:mark_n]
+        neg_num = len(fp_data)
+        pos_num = mark_f
+        if pos_num > neg_num: pos_num = neg_num
+        train_data_tmp = np.zeros((pos_num+neg_num,train_positive.shape[1],train_positive.shape[2]), np.int64)
+        train_data_tmp[:pos_num] = train_data[:pos_num]
+        train_data_tmp[pos_num:] = fp_data
+        train_label_tmp = np.zeros((pos_num+neg_num), np.bool)
+        train_label_tmp[:pos_num] = True
+        train_label_tmp[pos_num:] = False
         print '    data loaded, elapsed:%.0fs' %(time.time()-start_stamp)
-        table_tmp = np.zeros((K,2*fp_num),dtype=np.int)
-        table_tmp[:,:fp_num] = base_table[:,:fp_num]
-        for i in range(fp_num):
-            calcuHaarFeature_numba(table_tmp[:,fp_num+i],train_data_tmp[fp_num+i,:,:],haars,window_size)
+        table_tmp = np.zeros((K,pos_num+neg_num),dtype=np.int)
+        table_tmp[:,:pos_num] = base_table[:,:pos_num]
+        for i in range(neg_num):
+            calcuHaarFeature_numba(table_tmp[:,pos_num+i],train_data_tmp[pos_num+i,:,:],haars,window_size)
         print '    table ready, elapsed:%.0fs' %(time.time()-start_stamp)
         table_sorted_tmp = np.zeros_like(table_tmp)
         for i in range(K):
             table_sorted_tmp[i,:] = np.argsort(table_tmp[i,:])
-        print '    table sorted, prepare finish, elapsed:%.0fs' %(time.time()-start_stamp)
+        print '    table sorted, prepare finish, size: %d elapsed:%.0fs' %(pos_num+neg_num, time.time()-start_stamp)
         return (train_data_tmp, train_label_tmp, table_tmp, table_sorted_tmp)
     
 ## test code, test 'checkByAdaboost'
@@ -425,9 +428,9 @@ valid_label = test_label
 filename = ''
 #filename = 'cascade_my_own_data_face_test.npy'
 
-max_layer_num = 2
+max_layer_num = 10
 F_target = 0.01
-constaints_list = [(0.99,0.5),(0.99,0.8),(0.99,0.7),(0.99,0.7),(0.99,0.7), \
+constaints_list = [(0.99,0.5),(0.99,0.7),(0.99,0.7),(0.99,0.7),(0.99,0.7), \
                    (0.99,0.7),(0.99,0.7),(0.99,0.7),(0.99,0.7),(0.99,0.7), \
                    ]
 if not filename is None:
@@ -453,16 +456,17 @@ if not filename is None:
             t = t + 1
             print 'layer %d train Adaboost size:%d' %(i,t)
             adaboost_, w_ = adaboostTrain(1, table_tmp, table_sorted_tmp, train_data_tmp, train_label_tmp, adaboost_, w_)
-            delta = 0.1
-            fade_param = 0.5
+            fade_param = 1.0
+            delta = 0.05
             if t == 1: cascade_.append((adaboost_, fade_param))
-            print 'layer %d start tuning->\nD_all: %f, F_all: %f' %(i,D_all,F_all)
-            for tune_ in range(18):
+            print '    start tuning->\n    D_all: %f, F_all: %f' %(D_all,F_all)
+            for tune_ in range(19):
+                cascade_[-1] = (cascade_[-1][0], fade_param)
                 (D_, F_) = evalueDandF(cascade_, valid_data, valid_label)
                 print '    %f, %f' %(D_,F_)
+                if F_ > F_all: break
                 if D_ > D_all and F_ < F_all: break
                 fade_param = fade_param - delta
-                cascade_[-1] = (cascade_[-1][0], fade_param)
         if filename != '':
             saveCascade(filename, cascade_)
         i = i + 1
