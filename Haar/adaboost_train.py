@@ -172,48 +172,53 @@ def adaboostWeakSelection(w,table_sorted,train_label,N):
     return (best_k,best_n,beat_p,best_err)
 adaboostWeakSelection_numba = autojit(adaboostWeakSelection)
 # main training process for Adaptive Boost
-def adaboostTrain(deltaT, table_sorted, train_label, adaboost=[], w=[], w_list=[]):
+def adaboostTrain(deltaT, table, table_sorted, train_label, adaboost=None, w=None, is_debug=False):
     N = len(train_label)    
     m = np.sum(train_label)
     l = N - m
-    if len(w) == 0:
+    if adaboost is None:
+    # if I insert this [] as default value of 'adaboost', adaboostTrain can only create one []! 
+    # made weird bug! bad design of python for memoery allocation, 
+    # beware of default value of parameter, it should not be the value that you want to return!
+        adaboost = []
+    if w is None:
         w = np.zeros((N),np.float)
         w[train_label] = 0.5/m
         w[~train_label] = 0.5/l
-        w_list.append(w)
     start_stamp = time.time()
     for i in range(deltaT):
         w = w/np.sum(w)
         (best_k,best_n,beat_p,best_err) = adaboostWeakSelection_numba(w, table_sorted, train_label, N)
-        print 'adaboost: %.1f%% (%d) elapsed:%.0fs' %(float(i+1)/deltaT*100.0, len(adaboost), time.time()-start_stamp)
+        print 'adaboost: %.1f%% (%d) elapsed:%.0fs' %(float(i+1)/deltaT*100.0, len(adaboost)+1, time.time()-start_stamp)
         if best_n == N-1:
             thre = table[best_k,table_sorted[best_k,best_n]]
         else:
             thre = 0.5 * table[best_k,table_sorted[best_k,best_n]] + 0.5 * table[best_k,table_sorted[best_k,best_n+1]]
             thre = int(np.round(thre))
-#        print '{\nbest_k = %d\nbest_n = %d\nbeat_p = %d\nthre = %f\nbest_err = %f\n}' %(best_k,best_n,beat_p,best_err,thre)
+        if is_debug:
+            print '{\nbest_k = %d\nbest_n = %d\nbeat_p = %d\nthre = %f\nbest_err = %f\n}' %(best_k,best_n,beat_p,best_err,thre)
         check_res = checkByHaarWeakClassifier(calcuSpecificHaarFeatures(train_data,haar_map[best_k]), beat_p, thre)
-        if beat_p:      
-            check_res1 = table[best_k] <= thre
-        else:
-            check_res1 = table[best_k] > thre
-        print '   c-rate: %.3f\n   r-t match:%.1f%%\n   weighted rate: %.2f' \
-            %(float(np.sum(check_res == train_label))/N, \
-              float(np.sum(check_res == check_res1))/N*100, 1.0-best_err) 
+        if is_debug:
+            if beat_p:      
+                check_res1 = table[best_k] <= thre
+            else:
+                check_res1 = table[best_k] > thre
+            print '   c-rate: %.3f\n   r-t match:%.1f%%\n   weighted rate: %.2f' \
+                %(float(np.sum(check_res == train_label))/N, \
+                  float(np.sum(check_res == check_res1))/N*100, 1.0-best_err) 
         w[check_res == train_label] = w[check_res == train_label] * (best_err/(1.0-best_err))
-        w_list.append(w.copy())
         adaboost.append((np.log((1.0-best_err)/best_err), thre, best_k, beat_p))
-        print '   adaboost-rate: %.6f%%' \
-            %(float(np.sum(checkByAdabost(adaboost, train_data, train_label, N) == train_label))/N*100)       
-    return adaboost, w_list
-
-def checkByAdabost(adaboost, data, label, N):
+        if is_debug:
+            print '   adaboost-rate: %.6f%%' \
+                %(float(np.sum(checkByAdaboost(adaboost, train_data, train_label, N) == train_label))/N*100)       
+    return adaboost, w
+def checkByAdaboost(adaboost, data, label, N, fade_param=1.0):
     check_tmp = np.zeros((N), dtype=np.float)
     a_sum = 0.0
     for (a,thre,best_k,beat_p) in adaboost:
         a_sum = a_sum + a
         check_tmp = check_tmp + a * checkByHaarWeakClassifier(calcuSpecificHaarFeatures(data,haar_map[best_k]), beat_p, thre).astype(np.float)
-    return check_tmp >= 0.5*a_sum
+    return check_tmp >= 0.5*a_sum*fade_param
 
 def calcuSingleHaar(ii, (haar_type, has_trans, x, y, w, h)):
     if haar_type == 0:
@@ -259,15 +264,28 @@ def loaddata(file_path):
     tmp = None
     return (data, label, window_size)
 if not 'train_data' in dir() or not 'train_label' in dir():
-#   'face_train_channer.csv'  # my own, larger data set
-    (train_data, train_label, window_size) = loaddata('svm.train.normgrey')  # small data set
-    (test_data, test_label, window_size) = loaddata('svm.test.normgrey')  # small data set
+   # small data set for face
+#    (train_data, train_label, window_size) = loaddata('svm.train.normgrey')  
+#    (test_data, test_label, window_size) = loaddata('svm.test.normgrey')  # small data set
+   # my own, larger data set
+   (train_positive, tmp, window_size) = loaddata('face_train_positive.csv')
+   (train_negtive, train_negtive_label, window_size) = loaddata('face_train_negtive.csv')
+   tmp = None
+   (test_data, test_label, window_size) = loaddata('face_test.csv')
+   mark_f = train_positive.shape[0]
+   mark_n = 4000
+   train_data = np.zeros((mark_f+mark_n,train_positive.shape[1],train_positive.shape[2]), np.int64)
+   train_label = np.zeros((mark_f+mark_n), np.bool)
+   train_data[:mark_f] = train_positive
+   train_data[mark_f:] = train_negtive[:mark_n]
+   train_label[:mark_f] = True
+   train_label[mark_f:] = False
 
 plt.gray()
+haars = [(1,2,1,2,1,1,1),(3,1,3,1,1,1,1),(2,2,2,2,1,1,0)]
 #plt.imshow(reverseIntegral(train_data[77,:,:])) # test integral
 #---------------------------------------------------------- create basic feature table
 if not 'table' in dir():
-    haars = [(1,2,1,2,1,1,1),(3,1,3,1,1,1,1),(2,2,2,2,1,1,0)]
     # map to original haar setting
     haar_map = getHaarFeatureMap(haars,window_size)   
     K = len(haar_map)
@@ -277,7 +295,7 @@ if not 'table' in dir():
         for i in range(N):
             calcuHaarFeature_numba(table[:,i],train_data[i,:,:],haars,window_size)
     print 'create table: %.2fs' % t.secs
-#---------------------------------------------------------- create sorted table    
+#---------------------------------------------------------- create sorted table
 if not 'table_sorted' in dir():
     table_sorted = np.zeros_like(table)
     with Timer() as t:
@@ -294,43 +312,153 @@ def drawOutlierOfData(w, threshold, train_data):
 def adaboostTesting(adaboost, data, label):
     N = len(label)
     for i in range(len(adaboost)):
-        print '%d rate: %.6f%%' %(i, float(np.sum(checkByAdabost(adaboost[:i+1], data, label, N) == label))/N*100)  
-def saveAdaboost(filename, haars, adaboost, w_list):
-    np.save(filename,(haars, adaboost, w_list))
+        print '%d rate: %.6f%%' %(i, float(np.sum(checkByAdaboost(adaboost[:i+1], data, label, N) == label))/N*100)  
+def saveAdaboost(filename, haars, adaboost, w):
+    np.save(filename,(haars, adaboost, w))
 def loadAdaboost(filename):
-    (haars, adaboost, w_list) = np.load(filename)
-    return (haars, adaboost, w_list)
+    (haars, adaboost, w) = np.load(filename)
+    return (haars, adaboost, w)
 filename = None
 #filename = ''
 #filename = 'ada_small_face_test.npy'
-if filename != None:
+#filename = 'ada_my_own_data_face_test.npy'
+if not filename is None:
     if filename == '':
         # Simple train
-        adaboost, w_list = adaboostTrain(10, table_sorted, train_label)
+        adaboost, w = adaboostTrain(10, table, table_sorted, train_label)
     else:
-        # Load and train    
-        (haars, adaboost, w_list) = loadAdaboost(filename)
-        adaboost, w_list = adaboostTrain(5, table_sorted, train_label, adaboost, w_list[-1], w_list)
-        saveAdaboost(filename, haars, adaboost, w_list)
-## test code 
+        # Load and train
+        (haars, adaboost, w) = loadAdaboost(filename)
+        adaboost, w = adaboostTrain(129, table, table_sorted, train_label, adaboost, w)
+        saveAdaboost(filename, haars, adaboost, w)
+## test code
 #else:
-#    drawHaarFeatureOnImage(haar_map,10022)
+#    drawHaarFeatureOnImage(haar_map,36830)
 #    drawOutlierOfData(w_list[-1], 0.005, train_data)
 #    adaboostTesting(adaboost, train_data, train_label)   # remember train the adaboost for this test 
 #    adaboostTesting(adaboost, test_data, test_label)
+        
+
+#---------------------------------------------------------- Cascade train
+def saveCascade(filename, cascade, D_all, F_all):
+    np.save(filename, (cascade, D_all, F_all))
+def loadCascade(filename):
+    (cascade, D_all, F_all) = np.load(filename)
+    return (cascade, D_all, F_all)
+    
+def checkByCascade(cascade, data, label):
+    N = len(label)
+    check_tmp = np.zeros((N), dtype=np.bool)
+    index_ = np.asarray(range(N))
+    data_ = data
+    label_ = label
+    for i in range(len(cascade)):
+        adaboost, fade_param = cascade[i]
+        check_res = checkByAdaboost(adaboost, data_, label_, N, fade_param)
+        index_tmp = np.where(check_res)[0]
+        N = len(index_tmp)
+        data_ = data_[index_tmp]
+        label_ = label_[index_tmp]
+        index_ = index_[index_tmp]
+#        print 'cascade layer %d, N: %d' %(i, N)
+    check_tmp[index_] = True
+    return check_tmp
+    
+def prepareData(cascade):
+    if len(cascade) == 0:
+        return (train_data, train_label, table, table_sorted)
+    else:
+        start_stamp = time.time()
+        print 'preparing data for %d layer' %len(cascade)
+        fp_data = train_negtive[checkByCascade(cascade_, train_negtive, train_negtive_label)][:mark_f]
+        fp_num = len(fp_data)
+        train_data_tmp = np.zeros((2*fp_num,train_positive.shape[1],train_positive.shape[2]), np.int64)
+        train_data_tmp[:fp_num] = train_data[:fp_num]
+        train_data_tmp[fp_num:] = fp_data
+        train_label_tmp = np.zeros((2*fp_num), np.bool)
+        train_label_tmp[:fp_num] = True
+        train_label_tmp[fp_num:] = False
+        print '    :data loaded, elapsed:%.0fs' %(time.time()-start_stamp)
+        table_tmp = np.zeros((K,2*fp_num),dtype=np.int)
+        table_tmp[:,:fp_num] = table[:,:fp_num]
+        for i in range(fp_num):
+            calcuHaarFeature_numba(table_tmp[:,fp_num+i],train_data_tmp[fp_num+i,:,:],haars,window_size)
+        print '    :table ready, elapsed:%.0fs' %(time.time()-start_stamp)
+        table_sorted_tmp = np.zeros_like(table_tmp)
+        for i in range(K):
+            table_sorted_tmp[i,:] = np.argsort(table_tmp[i,:])
+        print '    :table sorted, prepare finish, elapsed:%.0fs' %(time.time()-start_stamp)
+        return (train_data_tmp, train_label_tmp, table_tmp, table_sorted_tmp)
+    
+## test code, test 'checkByAdaboost'
+#cascade_ = []
+#adaboost, w = adaboostTrain(3, table_sorted, train_label)
+#cascade_.append((adaboost, 1.0))
+#cascade_.append((adaboost, 0.75))
+#check_res = checkByCascade(cascade_, train_data, train_label)
+#check_res1 = checkByAdaboost(adaboost, test_data, test_label, len(test_label), 1.0)
+#d = float(np.sum(check_res1[test_label]))/np.sum(test_label)
+#f = float(np.sum(~test_label[check_res1]))/len(check_res1)
+#print 'd: %f, f: %f' %(d, f)
+#print '%f' %(float(np.sum(check_res==check_res1))/N*100)
+## test code, test 'checkByAdaboost'
+#a1,w = adaboostTrain(1, table_sorted, train_label)
+#a2,w = adaboostTrain(2, table_sorted, train_label)
+#cascade_.append((a1, 0.75))
+#cascade_.append((a1, 0.75))
+#check_res = checkByCascade(cascade_, valid_data, valid_label)
 
 
+#---------------------------------- Core of Cascade
+valid_data = test_data
+valid_label = test_label
+#valid_data = train_data
+#valid_label = train_label
 
+#filename = None
+filename = ''
+#filename = 'cascade_my_own_data_face_test.npy'
 
-
-
-
-
-
-
-
-
-
-
+max_layer_num = 2
+F_target = 0.01
+constaints_list = [(0.99,0.4),(0.99,0.3)]
+if not filename is None:
+    if filename == '':
+        cascade_ = []
+        D_all = 1.0
+        F_all = 1.0    
+    else:    
+        (cascade_, D_all, F_all) = loadCascade(filename)
+    i = len(cascade_)
+    while F_all > F_target and i < len(constaints_list) and i < max_layer_num:
+        (train_data_tmp, train_label_tmp, table_tmp, table_sorted_tmp) = prepareData(cascade_)
+        (d_min, f_max) = constaints_list[i]
+        D_all = D_all * d_min
+        F_all = F_all * f_max
+        D_ = 0.0
+        F_ = 1.0
+        adaboost_ = None
+        w_ = None
+        t = 0
+        while not (D_ > D_all and F_ < F_all):
+            t = t + 1
+            print 'layer %d train Adaboost size:%d' %(i,t)
+            adaboost_, w_ = adaboostTrain(1, table_tmp, table_sorted_tmp, train_label_tmp, adaboost_, w_)
+            delta = 0.1
+            fade_param = 1.0
+            if t == 1: cascade_.append((adaboost_, fade_param))
+            print 'layer %d start tuning->\nD_all: %f, F_all: %f' %(i,D_all,F_all)
+            for tune_ in range(9):
+                check_res = checkByCascade(cascade_, valid_data, valid_label)
+                D_ = float(np.sum(check_res[valid_label]))/np.sum(valid_label)
+                F_ = float(np.sum(~valid_label[check_res]))/len(check_res)
+                print '    %f, %f' %(D_,F_)
+                if D_ > D_all and F_ < F_all: break
+                fade_param = fade_param - delta
+                cascade_[-1] = (cascade_[-1][0], fade_param)
+        if filename != '':
+            saveCascade(filename, cascade_, D_all, F_all)
+        i = i + 1
+    print '\nFinal-size %d,  D_all: %f, F_all: %f' %(len(cascade_),D_,F_)
 
 
