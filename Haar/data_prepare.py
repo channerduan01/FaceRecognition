@@ -115,8 +115,8 @@ if not 'face_list' in dir() or not 'non_face_list' in dir() or face_list is None
     print 'obtain face data: %.2fs' % t.secs
 #------------------------------------------------ output part of data
 outputData('face_train_positive.csv', (0,2000), (0,0))
-outputData('face_train_negtive.csv', (0,0), (0,105000))
-outputData('face_test.csv', (2000,2900), (105000,107000))
+outputData('face_train_negtive.csv', (0,0), (2000,50000))
+outputData('face_test.csv', (2000,2900), (0,2000))
 
 
 

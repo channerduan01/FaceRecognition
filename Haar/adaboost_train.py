@@ -3,9 +3,13 @@ from numpy import genfromtxt
 import matplotlib.pyplot as plt
 from numba.decorators import jit, autojit
 from timer import Timer
+from data_generator import DataGenerator
 import time
 
-
+def readImage(path):
+    '''Read image as np array, from path'''
+    im = np.array(Image.open(path).convert('L'))
+    return im
 def drawFigures(params,width=6):
     length = len(params)
     if (length < 2 or length%2 == 1 or width < 1):
@@ -210,16 +214,16 @@ def adaboostTrain(deltaT, mytable, mytable_sorted, data, label, adaboost=None, w
         adaboost.append((np.log((1.0-best_err)/best_err), thre, best_k, beat_p))
         if is_debug:
             print '   adaboost-rate: %.6f%%' \
-                %(float(np.sum(checkByAdaboost(adaboost, data, label, N) == label))/N*100)       
+                %(float(np.sum(checkByAdaboost(adaboost, data, N) == label))/N*100)       
     return adaboost, w
-def checkByAdaboost(adaboost, data, label, N, fade_param=1.0):
+
+def checkByAdaboost(adaboost, data, N, fade_param=1.0):
     check_tmp = np.zeros((N), dtype=np.float)
     a_sum = 0.0
     for (a,thre,best_k,beat_p) in adaboost:
         a_sum = a_sum + a
         check_tmp = check_tmp + a * checkByHaarWeakClassifier(calcuSpecificHaarFeatures(data,haar_map[best_k]), beat_p, thre).astype(np.float)
     return check_tmp >= 0.5*a_sum*fade_param
-
 def calcuSingleHaar(ii, (haar_type, has_trans, x, y, w, h)):
     if haar_type == 0:
         return calcuBasis2Haar(ii, has_trans, x, y, w, h)
@@ -238,6 +242,33 @@ def checkByHaarWeakClassifier(values, p_, thre):
         return values <= thre
     else:
         return values > thre
+def fastCheckByCascade(cascade, image):
+    for i in range(len(cascade)):
+        adaboost, fade_param = cascade[i] 
+        res_ = 0.0
+        a_sum = 0.0
+        for (a,thre,best_k,best_p) in adaboost:
+            a_sum = a_sum + a
+            res_ = res_ + a*checkByHaarWeakClassifier(calcuSingleHaar(image,haar_map[best_k]),best_p,thre)
+        if res_ < 0.5*a_sum*fade_param: return False
+    return True
+fastCheckByCascade = autojit(fastCheckByCascade)
+def checkByCascade(cascade, data):
+    N = len(data)
+    check_tmp = np.zeros((N), dtype=np.bool)
+    index_ = np.asarray(range(N))
+    data_ = data
+    for i in range(len(cascade)):
+        adaboost, fade_param = cascade[i]
+        check_res = checkByAdaboost(adaboost, data_, N, fade_param)
+        index_tmp = np.where(check_res)[0]
+        N = len(index_tmp)
+        data_ = data_[index_tmp]
+        index_ = index_[index_tmp]
+#        print 'cascade layer %d, N: %d' %(i, N)
+    check_tmp[index_] = True
+    return check_tmp
+checkByCascade = autojit(checkByCascade)
 def drawHaarFeatureOnImage(img,haar_map,k):
     (haar_type, has_trans, x, y, w, h) = haar_map[k]
     # raw image start from 0, integral start from 1, that is different
@@ -313,7 +344,7 @@ def drawOutlierOfData(w, threshold, data):
 def adaboostTesting(adaboost, data, label):
     N = len(label)
     for i in range(len(adaboost)):
-        print '%d rate: %.6f%%' %(i, float(np.sum(checkByAdaboost(adaboost[:i+1], data, label, N) == label))/N*100)  
+        print '%d rate: %.6f%%' %(i, float(np.sum(checkByAdaboost(adaboost[:i+1], data, N) == label))/N*100)  
 def saveAdaboost(filename, haars, adaboost, w):
     np.save(filename,(haars, adaboost, w))
 def loadAdaboost(filename):
@@ -340,44 +371,73 @@ if not filename is None:
 #    adaboostTesting(adaboost, train_data, train_label)   # remember train the adaboost for this test 
 #    adaboostTesting(adaboost, test_data, test_label)
 
+#---------------------------------------------------------- Detection
+#image = calcuIntegral(readImage('my_profile.jpg'))
+#
+#generator = DataGenerator(window_size, './negatives/', 100000)
+#
+##def getFalsePostiveData(cascade, generate_num):
+##    list_res = []
+##    while generate_num > len(list_res):
+##        data_tmp = generator.generate()
+##        check_res = checkByCascade(cascade, data_tmp)
+##        list_res.extend(data_tmp[check_res].tolist())
+##    return list_res
+#
+#with Timer() as t:
+##    (num_, select_) = getFalsePostiveData(cascade_, 100)
+##    list_res = getFalsePostiveData(cascade_, 4000)
+##    data_tmp = generator.generate()
+##    check_res = checkByCascade(cascade_, data_tmp)
+#    
+##print 'total: %d, select: %d, time-cost: %.2fs' %(1, len(list_res), t.secs)
+#
+#num_ = 0
+#select_ = 0
+#with Timer() as t:
+#    for i in range(window_size,image.shape[0]):
+#        for j in range(window_size,image.shape[1]):
+#            num_ = num_ + 1
+##            if fastCheckByCascade(cascade_, image[i-window_size:i+1,j-window_size:j+1]):
+##                select_ = select_ + 1
+#print 'total: %d, select: %d, time-cost: %.2fs' %(num_, select_, t.secs)
 
 #---------------------------------------------------------- Cascade train
 def saveCascade(filename, cascade):
     np.save(filename, cascade)
 def loadCascade(filename):
     return np.load(filename).tolist()
-
-def checkByCascade(cascade, data, label):
-    N = len(label)
-    check_tmp = np.zeros((N), dtype=np.bool)
-    index_ = np.asarray(range(N))
-    data_ = data
-    label_ = label
-    for i in range(len(cascade)):
-        adaboost, fade_param = cascade[i]
-        check_res = checkByAdaboost(adaboost, data_, label_, N, fade_param)
-        index_tmp = np.where(check_res)[0]
-        N = len(index_tmp)
-        data_ = data_[index_tmp]
-        label_ = label_[index_tmp]
-        index_ = index_[index_tmp]
-#        print 'cascade layer %d, N: %d' %(i, N)
-    check_tmp[index_] = True
-    return check_tmp
-
 def evalueDandF(cascade, data, label):
-    check_res = checkByCascade(cascade, data, label)
+    check_res = checkByCascade(cascade, data)
     d = float(np.sum(check_res[label]))/np.sum(label)
     f = float(np.sum(~label[check_res]))/len(check_res)
     return (d, f)
-
+# Key image generator
+generator = DataGenerator(window_size, './negatives/', 10000, 0, 0.5)
+#generator = DataGenerator(window_size, './train_non_face_scenes/', 10000, 0, 0.5)
+file_index_ = 0
+def getFalsePostiveData(cascade, generate_num):
+    global file_index_
+    list_res = []
+    while generate_num > len(list_res):
+        data_tmp = generator.generate()
+        if data_tmp is None: break
+        check_res = checkByCascade(cascade, data_tmp)
+        list_res.extend(data_tmp[check_res].tolist())
+    file_index_ = generator.getDebugInfo()
+    return list_res
 def prepareData(cascade):
     if len(cascade) == 0:
         return (train_data, train_label, base_table, base_table_sorted)
     else:
         start_stamp = time.time()
-        print 'preparing data for %d layer' %len(cascade)
-        fp_data = train_negtive[checkByCascade(cascade_, train_negtive, train_negtive_label)][:mark_n]
+        if len(cascade) == 1:
+            print 'warmup for %d layer' %len(cascade)
+            fp_data = train_negtive[checkByCascade(cascade_, train_negtive)][:mark_n]
+        else:
+            print 'preparing data for %d layer' %len(cascade)
+            fp_data = np.asarray(getFalsePostiveData(cascade_, mark_n)[:mark_n])
+        
         neg_num = len(fp_data)
         pos_num = mark_f
         if pos_num > neg_num: pos_num = neg_num
@@ -404,8 +464,8 @@ def prepareData(cascade):
 #adaboost, w = adaboostTrain(3, table_sorted, train_label)
 #cascade_.append((adaboost, 1.0))
 #cascade_.append((adaboost, 0.75))
-#check_res = checkByCascade(cascade_, train_data, train_label)
-#check_res1 = checkByAdaboost(adaboost, test_data, test_label, len(test_label), 1.0)
+#check_res = checkByCascade(cascade_, train_data)
+#check_res1 = checkByAdaboost(adaboost, test_data, len(test_label), 1.0)
 #d = float(np.sum(check_res1[test_label]))/np.sum(test_label)
 #f = float(np.sum(~test_label[check_res1]))/len(check_res1)
 #print 'd: %f, f: %f' %(d, f)
@@ -415,7 +475,7 @@ def prepareData(cascade):
 #a2,w = adaboostTrain(2, table_sorted, train_label)
 #cascade_.append((a1, 0.75))
 #cascade_.append((a1, 0.75))
-#check_res = checkByCascade(cascade_, valid_data, valid_label)
+#check_res = checkByCascade(cascade_, valid_data)
 
 
 #---------------------------------- Core of Cascade
@@ -425,12 +485,12 @@ valid_label = test_label
 #valid_label = train_label
 
 #filename = None
-filename = ''
-#filename = 'cascade_my_own_data_face_test.npy'
+#filename = ''
+filename = 'cascade_my_own_data_face_test.npy'
 
-max_layer_num = 10
+max_layer_num = 7
 F_target = 0.01
-constaints_list = [(0.99,0.5),(0.99,0.7),(0.99,0.7),(0.99,0.7),(0.99,0.7), \
+constaints_list = [(0.99,0.5),(0.99,0.6),(0.99,0.7),(0.99,0.7),(0.99,0.6), \
                    (0.99,0.7),(0.99,0.7),(0.99,0.7),(0.99,0.7),(0.99,0.7), \
                    ]
 if not filename is None:
@@ -442,6 +502,8 @@ if not filename is None:
         cascade_ = loadCascade(filename)
         (D_all, F_all) = evalueDandF(cascade_, valid_data, valid_label)
     i = len(cascade_)
+    train_data_tmp = None
+    train_label_tmp = None
     while F_all > F_target and i < len(constaints_list) and i < max_layer_num:
         (train_data_tmp, train_label_tmp, table_tmp, table_sorted_tmp) = prepareData(cascade_)
         (d_min, f_max) = constaints_list[i]
@@ -470,7 +532,8 @@ if not filename is None:
         if filename != '':
             saveCascade(filename, cascade_)
         i = i + 1
-    print '\nFinal-size %d,  D_all: %f, F_all: %f' %(len(cascade_),D_,F_)
+    (D_all, F_all) = evalueDandF(cascade_, valid_data, valid_label)
+    print '\nFinal-size %d,  D_all: %f, F_all: %f' %(len(cascade_),D_all,F_all)
 
 
 
