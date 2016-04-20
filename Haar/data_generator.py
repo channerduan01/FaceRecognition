@@ -102,11 +102,11 @@ class DataGenerator(object):
 
 #generator = DataGenerator(19, ['./train_non_face_scenes/','./negatives/'])
 
-generator = DataGenerator(19, ['./train_non_face_scenes/'])
+#generator = DataGenerator(19, ['./train_non_face_scenes/'])
 
 #generator = DataGenerator(19, './negatives/', 10000, 0, 3)
-files = generator.getFiles()
-print 'total possible images: %d' %generator.getTotalNum()
+#files = generator.getFiles()
+#print 'total possible images: %d' %generator.getTotalNum()
 #resource = generator.generate()
 ##generator.printDebugInfo()
 ##print 'length: %d' %(len(resource))
