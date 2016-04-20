@@ -103,20 +103,20 @@ def outputData(filename, (s_face,e_face), (s_non_face,e_non_face)):
 plt.gray()
 face_path = './Caltech_CropFaces/'
 non_face_path = './train_non_face_scenes/'
-window_size = 19
+window_size = 24
 #------------------------------------------------ obtain the data
 if not 'face_list' in dir() or not 'non_face_list' in dir() or face_list is None: 
     with Timer() as t:
-#        face_list = obtain_face_data(face_path, window_size)
-        face_list = obtain_high_quality_face_data()
+        face_list = obtain_face_data(face_path, window_size)
+#        face_list = obtain_high_quality_face_data()
         non_face_list = obtain_non_face_data(non_face_path, window_size)
         np.random.shuffle(face_list)
         np.random.shuffle(non_face_list)
     print 'obtain face data: %.2fs' % t.secs
 #------------------------------------------------ output part of data
-outputData('face_train_positive.csv', (0,2000), (0,0))
-outputData('face_train_negtive.csv', (0,0), (2000,50000))
-outputData('face_test.csv', (2000,2900), (0,2000))
+outputData('face_train_positive.csv', (0,4000), (0,0))
+outputData('face_train_negtive.csv', (0,0), (3000,50000))
+outputData('face_test.csv', (4000,6700), (0,3000))
 
 
 

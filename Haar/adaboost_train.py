@@ -413,8 +413,7 @@ def evalueDandF(cascade, data, label):
     f = float(np.sum(~label[check_res]))/len(check_res)
     return (d, f)
 # Key image generator
-generator = DataGenerator(window_size, './negatives/', 10000, 0, 0.5)
-#generator = DataGenerator(window_size, './train_non_face_scenes/', 10000, 0, 0.5)
+generator = DataGenerator(window_size, ['./train_non_face_scenes/','./negatives/'], 10000, 0, 1.0)
 file_index_ = 0
 def getFalsePostiveData(cascade, generate_num):
     global file_index_
@@ -447,7 +446,7 @@ def prepareData(cascade):
         train_label_tmp = np.zeros((pos_num+neg_num), np.bool)
         train_label_tmp[:pos_num] = True
         train_label_tmp[pos_num:] = False
-        print '    data loaded, elapsed:%.0fs' %(time.time()-start_stamp)
+        print '    data loaded, size: %d , elapsed:%.0fs' %(pos_num+neg_num, time.time()-start_stamp)
         table_tmp = np.zeros((K,pos_num+neg_num),dtype=np.int)
         table_tmp[:,:pos_num] = base_table[:,:pos_num]
         for i in range(neg_num):
@@ -456,7 +455,7 @@ def prepareData(cascade):
         table_sorted_tmp = np.zeros_like(table_tmp)
         for i in range(K):
             table_sorted_tmp[i,:] = np.argsort(table_tmp[i,:])
-        print '    table sorted, prepare finish, size: %d elapsed:%.0fs' %(pos_num+neg_num, time.time()-start_stamp)
+        print '    table sorted, prepare finish, elapsed:%.0fs' %(time.time()-start_stamp)
         return (train_data_tmp, train_label_tmp, table_tmp, table_sorted_tmp)
     
 ## test code, test 'checkByAdaboost'
@@ -488,9 +487,9 @@ valid_label = test_label
 #filename = ''
 filename = 'cascade_my_own_data_face_test.npy'
 
-max_layer_num = 7
+max_layer_num = 4
 F_target = 0.01
-constaints_list = [(0.99,0.5),(0.99,0.6),(0.99,0.7),(0.99,0.7),(0.99,0.6), \
+constaints_list = [(0.99,0.5),(0.98,0.7),(0.98,0.7),(0.98,0.7),(0.99,0.7), \
                    (0.99,0.7),(0.99,0.7),(0.99,0.7),(0.99,0.7),(0.99,0.7), \
                    ]
 if not filename is None:
@@ -529,6 +528,8 @@ if not filename is None:
                 if F_ > F_all: break
                 if D_ > D_all and F_ < F_all: break
                 fade_param = fade_param - delta
+        D_all = D_
+        F_all = F_
         if filename != '':
             saveCascade(filename, cascade_)
         i = i + 1

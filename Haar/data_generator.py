@@ -15,9 +15,16 @@ def readImage(path):
     return im
     
 class DataGenerator(object):
-    def __init__(self, window_size, filepath, bundle_size=200000, file_index=0, resize_factor = 0):
-        self.filepath = filepath
-        self.file_list = os.listdir(filepath)[1:]
+    def __init__(self, window_size, filepaths, bundle_size=200000, file_index=0, resize_factor = 0):
+        self.filepaths = filepaths
+        self.file_list = []
+        self.filepath_map = []
+        sum_ = 0
+        for path in filepaths:
+            tmp_list = os.listdir(path)[1:]
+            sum_ = sum_ + len(tmp_list)
+            self.filepath_map.append(sum_)
+            self.file_list.extend(tmp_list)
 #        np.random.shuffle(self.file_list)
         self.resize_factor = resize_factor
         self.file_num = len(self.file_list)
@@ -44,12 +51,16 @@ class DataGenerator(object):
     def getDebugInfo(self):
         print 'file_index: %d/%d, image_index (%d, %d)' %(self.file_index, self.file_num, self.image_index[0], self.image_index[1])
         return self.file_index
-    
+        
+    def getfilepath(self, f_index):
+        for i in range(len(self.filepath_map)):
+            if f_index < self.filepath_map[i]: return self.filepaths[i]
+                
     def getTotalNum(self):
         window_size = self.window_size
         num_ = 0
         for f_index in range(self.file_index, self.file_num):
-            (i, j) = readImage(self.filepath + self.file_list[f_index]).shape
+            (i, j) = readImage(self.getfilepath(f_index) + self.file_list[f_index]).shape
             num_ = num_ + (i - window_size)*(j - window_size)
         if self.resize_factor == 0:
             return num_
@@ -64,7 +75,7 @@ class DataGenerator(object):
         num_ = num_ - 1
         for f_index in range(self.file_index, self.file_num):
             print 'data generate ready (%d/%d)' %(f_index+1, self.file_num)
-            image = readImage(self.filepath + self.file_list[f_index])
+            image = readImage(self.getfilepath(f_index) + self.file_list[f_index])
             if self.resize_factor != 0:
                 image = cv2.resize(image, (int(np.round(image.shape[0]*self.resize_factor)),
                     int(np.round(image.shape[1]*self.resize_factor))), interpolation=cv2.INTER_CUBIC)
@@ -89,10 +100,13 @@ class DataGenerator(object):
         return None
 
 
-#generator = DataGenerator(19, './train_non_face_scenes/')
+#generator = DataGenerator(19, ['./train_non_face_scenes/','./negatives/'])
+
+generator = DataGenerator(19, ['./train_non_face_scenes/'])
+
 #generator = DataGenerator(19, './negatives/', 10000, 0, 3)
-#files = generator.getFiles()
-#print 'total possible images: %d' %generator.getTotalNum()
+files = generator.getFiles()
+print 'total possible images: %d' %generator.getTotalNum()
 #resource = generator.generate()
 ##generator.printDebugInfo()
 ##print 'length: %d' %(len(resource))
