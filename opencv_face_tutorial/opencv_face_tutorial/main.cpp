@@ -66,7 +66,6 @@ static void read_csv(const string& filename, vector<Mat>& images, vector<int>& l
 void printMat(Mat mat, string mark) {
     cout<<"Mat ->"<<mark<<"<-"<<endl;
     cout<<"shape: "<<mat.rows<<", "<<mat.cols<<endl;
-    
     cout<<endl;
 }
 

@@ -25,10 +25,8 @@ public class FileEnvironment {
         Log.e("channer test", "got basic filepath: " + baseAppOutputPath);
     }
 
-    static int num = 0;
     public static String getTmpImagePath() {
-        num++;
-        return baseAppOutputPath + "/temp" + num;
+        return baseAppOutputPath + "/";
     }
 
 }

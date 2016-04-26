@@ -1,22 +1,30 @@
 package com.channer.ear;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
-import android.widget.FrameLayout;
+import android.view.View;
+import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.*;
 
+import java.io.File;
 import java.util.List;
 
-public class MyActivity extends Activity {
+public class MyActivity extends Activity implements CameraPreview.CapturedCallback,
+        View.OnClickListener {
 
-    Camera mCamera = null;
-    CameraPreview mPreview = null;
+    private Camera mCamera = null;
+    private CameraPreview mPreview = null;
+
+    private ImageView mButtonImageView = null;
+    private TextView mButtonTextView = null;
 
     /**
      * Called when the activity is first created.
@@ -25,14 +33,72 @@ public class MyActivity extends Activity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
+        initCamera();
+        initUI();
+        resetRecord();
+    }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+    }
+
+    private boolean mRecordFlag = false;
+    private int mRecordNum = 0;
+
+    private void resetRecord() {
+        mRecordFlag = false;
+        mPreview.capture("");
+        mButtonImageView.setImageResource(R.drawable.ic_passive);
+    }
+
+    private void startRecord() {
+        final EditText et = new EditText(this);
+        et.setFocusable(true);
+        et.setFocusableInTouchMode(true);
+        AlertDialog ad = new AlertDialog.Builder(this)
+                .setTitle("Sampling name")
+                .setIcon(android.R.drawable.ic_dialog_info)
+                .setView(et)
+                .setPositiveButton("Sure", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        String input = et.getText().toString();
+                        if (input.equals("")) {
+                            Toast.makeText(getApplicationContext(), "Please input the name" + input, Toast.LENGTH_LONG).show();
+                        } else {
+                            File destDir = new File(FileEnvironment.getTmpImagePath() + input);
+                            if (destDir.exists()) {
+                                Toast.makeText(getApplicationContext(), "The '" + input + "' already sampled!", Toast.LENGTH_LONG).show();
+                            } else {
+                                destDir.mkdirs();
+                                mRecordFlag = true;
+                                mRecordNum = 0;
+                                mButtonTextView.setText("");
+                                mPreview.capture(input);
+                                mButtonImageView.setImageResource(R.drawable.ic_active);
+                            }
+                        }
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .create();
+        ad.show();
+    }
+
+    private void initUI() {
+        mButtonImageView = (ImageView) findViewById(R.id.iv_btn);
+        mButtonImageView.setOnClickListener(this);
+        mButtonTextView = (TextView) findViewById(R.id.tv_btn);
+    }
+
+    private void initCamera() {
         mCamera = getCameraInstance(this);
         Camera.Parameters parameters;
         parameters = mCamera.getParameters();
         List<Camera.Size> supportedPreviewSizes = parameters.getSupportedPreviewSizes();
         int c_width = 0;
         int c_height = 0;
-        for (int i = 0;i < supportedPreviewSizes.size();i++) {
+        for (int i = 0; i < supportedPreviewSizes.size(); i++) {
 //            Log.e("channer test", "Camera supported size: "
 //                    + supportedPreviewSizes.get(i).width + ", "
 //                    + supportedPreviewSizes.get(i).height);
@@ -46,8 +112,8 @@ public class MyActivity extends Activity {
         Log.e("channer test", "Camera size: " + c_width + ", " + c_height);
 
         mPreview = new CameraPreview(this, mCamera);
+        mPreview.setCallback(this);
         FrameLayout preview = (FrameLayout) findViewById(R.id.camera_preview);
-
         DisplayMetrics metrics = this.getResources().getDisplayMetrics();
         Log.e("channer test", "DisplayMetrics size: " + metrics.widthPixels + ", " + metrics.heightPixels);
         int v_width = metrics.widthPixels;
@@ -89,4 +155,25 @@ public class MyActivity extends Activity {
         return c; // returns null if camera is unavailable
     }
 
+    @Override
+    public void callback() {
+        if (mRecordFlag) {
+            mRecordNum++;
+            mButtonTextView.setText("" + mRecordNum + " got");
+        }
+    }
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.iv_btn:
+                if (mRecordFlag) {
+                    resetRecord();
+                } else {
+                    startRecord();
+                }
+                break;
+        }
+
+    }
 }

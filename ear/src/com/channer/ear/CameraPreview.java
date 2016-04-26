@@ -7,6 +7,7 @@ package com.channer.ear;
 import android.content.Context;
 import android.graphics.*;
 import android.hardware.Camera;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -18,6 +19,27 @@ import java.io.*;
  */
 public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback,
         Camera.PreviewCallback {
+
+    public static interface CapturedCallback {
+        void callback();
+    }
+
+    private CapturedCallback mCallback = null;
+    public void setCallback(CapturedCallback callback) {
+        mCallback = callback;
+    }
+
+    private String mCaptureName = null;
+    public void capture(String captureName) {
+        mCaptureName = captureName;
+        if (TextUtils.isEmpty(mCaptureName)) {
+            mCamera.setPreviewCallback(null);
+        } else {
+            mCamera.setPreviewCallback(this);
+            mNumber = 0;
+        }
+    }
+
     private SurfaceHolder mHolder;
     private Camera mCamera;
 
@@ -41,10 +63,9 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
             ///initialize the variables
             Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
             pixels = new int[previewSize.width * previewSize.height];
-
             mCamera.setDisplayOrientation(90);
             mCamera.setPreviewDisplay(holder);
-            mCamera.setPreviewCallback(this);
+//            mCamera.setPreviewCallback(this);
             mCamera.startPreview();
         } catch (IOException e) {
             Log.e("channer test", "Error setting camera preview: " + e.getMessage());
@@ -59,12 +80,22 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         decodeYUV420SP_GrayScale(pixels, data, w, h);
 //        Log.e("Pixels", "The top right pixel has the following RGB (hexadecimal) values:"
 //                +Integer.toHexString(pixels[0]));
+        save(w, h);
+        if (mCallback != null)
+            mCallback.callback();
+    }
+
+    private int mNumber = 0;
+    private void save(int w, int h) {
+        mNumber++;
         Bitmap bmp = Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888);
         // Rotating Bitmap
         Matrix mtx = new Matrix();
         mtx.postRotate(-90);
         bmp = Bitmap.createBitmap(bmp, 0, 0, w, h, mtx, true);
-        File file = new File(FileEnvironment.getTmpImagePath() + ".jpg");
+        String path = FileEnvironment.getTmpImagePath() + mCaptureName + "/" + mNumber + ".jpg";
+        Log.e("test", path);
+        File file = new File(FileEnvironment.getTmpImagePath() + mCaptureName + "/" + mNumber + ".jpg");
         OutputStream outStream;
         try
         {
