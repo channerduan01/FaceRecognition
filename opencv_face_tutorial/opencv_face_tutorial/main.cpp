@@ -72,7 +72,10 @@ void printMat(Mat mat, string mark) {
 int main(int argc, const char *argv[]) {
     string output_folder = ".";
     // Get the path to your CSV.
-    string fn_csv = "index_.csv";
+//    string fn_csv = "index_.csv";
+    string fn_csv = "index_ear.csv";
+    
+    
     // These vectors hold the images and corresponding labels.
     vector<Mat> images;
     vector<int> labels;
@@ -124,6 +127,7 @@ int main(int argc, const char *argv[]) {
     //
     //      cv::createEigenFaceRecognizer(0, 123.0);
     //
+    cout<<"start training!"<<endl;
     Ptr<FaceRecognizer> model = createEigenFaceRecognizer();
     model->train(images, labels);
     // The following line predicts the label of a given

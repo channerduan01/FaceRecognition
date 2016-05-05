@@ -20,7 +20,7 @@ void WeakClassifier::init(std::string description) {
 void WeakClassifier::printInfo() {
     std::cout << haar_type << " " << has_trans << " " << x << " " << y << " " << w << " " << h << " " << a << " " << thre << " " << best_p << std::endl;
 }
-void WeakClassifier::init(WeakClassifier * const p_cf) {
+void WeakClassifier::init(const WeakClassifier * const p_cf) {
     this->haar_type = p_cf->haar_type;
     this->has_trans = p_cf->has_trans;
     this->x = p_cf->x;
@@ -33,8 +33,8 @@ void WeakClassifier::init(WeakClassifier * const p_cf) {
 }
 void WeakClassifier::scaled(float scale) {
     if (scale == 1) return;
-    this->x = (int)((float)this->x+this->w*(scale-1.0f)/2.0f+0.5f);
-    this->y = (int)((float)this->y+this->h*(scale-1.0f)/2.0f+0.5f);
+    this->x = (int)((float)this->x*scale+0.5f);
+    this->y = (int)((float)this->y*scale+0.5f);
     this->w = (int)((float)this->w*scale+0.5f);
     this->h = (int)((float)this->h*scale+0.5f);
     this->thre = (int)((float)this->thre*scale+0.5f);

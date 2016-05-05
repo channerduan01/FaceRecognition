@@ -1,7 +1,6 @@
-package com.channer.ear;
+package com.cdd.detection.utils;
 
 import android.content.Context;
-import android.text.TextUtils;
 import android.util.Log;
 
 import java.io.File;

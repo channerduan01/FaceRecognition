@@ -25,7 +25,7 @@ public:
     bool best_p;
     
     void init(std::string description);
-    void init(WeakClassifier * const classifier);
+    void init(const WeakClassifier * const classifier);
     void scaled(float scale);
     void printInfo();
 };
@@ -46,6 +46,7 @@ public:
     int size, w_width, w_height;
     
     static Cascade generate(std::string filename);
+    Cascade() {}
     Cascade(int size, int w_width, int w_height);
     void printInfo();
     Cascade scaled(float scale);

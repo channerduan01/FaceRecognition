@@ -10,8 +10,6 @@ import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
-import android.view.WindowManager;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 
 import java.io.File;
@@ -22,6 +20,7 @@ public class MyActivity extends Activity implements CameraPreview.CapturedCallba
 
     private Camera mCamera = null;
     private CameraPreview mPreview = null;
+    private PhotoFrameView mPhotoFrameView = null;
 
     private ImageView mButtonImageView = null;
     private TextView mButtonTextView = null;
@@ -93,27 +92,14 @@ public class MyActivity extends Activity implements CameraPreview.CapturedCallba
 
     private void initCamera() {
         mCamera = getCameraInstance(this);
-        Camera.Parameters parameters;
-        parameters = mCamera.getParameters();
-        List<Camera.Size> supportedPreviewSizes = parameters.getSupportedPreviewSizes();
-        int c_width = 0;
-        int c_height = 0;
-        for (int i = 0; i < supportedPreviewSizes.size(); i++) {
-//            Log.e("channer test", "Camera supported size: "
-//                    + supportedPreviewSizes.get(i).width + ", "
-//                    + supportedPreviewSizes.get(i).height);
-            if (c_width == 0 && supportedPreviewSizes.get(i).height > 400) {
-                c_width = supportedPreviewSizes.get(i).width;
-                c_height = supportedPreviewSizes.get(i).height;
-            }
-        }
-        parameters.setPreviewSize(c_width, c_height);
-        mCamera.setParameters(parameters);
+        int c_width = mCamera.getParameters().getPreviewSize().width;
+        int c_height = mCamera.getParameters().getPreviewSize().height;
+
         Log.e("channer test", "Camera size: " + c_width + ", " + c_height);
 
         mPreview = new CameraPreview(this, mCamera);
         mPreview.setCallback(this);
-        FrameLayout preview = (FrameLayout) findViewById(R.id.camera_preview);
+        FrameLayout container = (FrameLayout) findViewById(R.id.camera_preview);
         DisplayMetrics metrics = this.getResources().getDisplayMetrics();
         Log.e("channer test", "DisplayMetrics size: " + metrics.widthPixels + ", " + metrics.heightPixels);
         int v_width = metrics.widthPixels;
@@ -122,7 +108,10 @@ public class MyActivity extends Activity implements CameraPreview.CapturedCallba
         FrameLayout.LayoutParams layoutParams =
                 new FrameLayout.LayoutParams(v_width, v_height);
         layoutParams.setMargins(0, (int) ((metrics.heightPixels - v_height) / 2f + 0.5f), 0, 0);
-        preview.addView(mPreview, layoutParams);
+        container.addView(mPreview, layoutParams);
+        mPhotoFrameView = new PhotoFrameView(this);
+        container.addView(mPhotoFrameView, layoutParams);
+        mPhotoFrameView.addFrame(new Rect(172, 255, 245, 245));
     }
 
     /**
@@ -144,15 +133,33 @@ public class MyActivity extends Activity implements CameraPreview.CapturedCallba
                     + ", is front: " + String.valueOf(cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT)
                     + ", orientation: " + cameraInfo.orientation
                     + ", disable the sound: " + cameraInfo.canDisableShutterSound);
-            if (cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) preferId = i;
+//            if (cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) preferId = i;
+            if (cameraInfo.facing != Camera.CameraInfo.CAMERA_FACING_FRONT) preferId = i;
+
         }
 
         try {
             c = Camera.open(preferId); // attempt to get a Camera instance
         } catch (Exception e) {
-            // Camera is not available (in use or does not exist)
+            return null;
         }
-        return c; // returns null if camera is unavailable
+        Camera.Parameters parameters;
+        parameters = c.getParameters();
+        List<Camera.Size> supportedPreviewSizes = parameters.getSupportedPreviewSizes();
+        int c_width = 0;
+        int c_height = 0;
+        for (int i = 0; i < supportedPreviewSizes.size(); i++) {
+            Log.e("channer test", "channer test Camera supported size: "
+                    + supportedPreviewSizes.get(i).width + ", "
+                    + supportedPreviewSizes.get(i).height);
+            if (c_width == 0 && supportedPreviewSizes.get(i).height > 400) {
+                c_width = supportedPreviewSizes.get(i).width;
+                c_height = supportedPreviewSizes.get(i).height;
+            }
+        }
+        parameters.setPreviewSize(c_width, c_height);
+        c.setParameters(parameters);
+        return c;
     }
 
     @Override
@@ -161,6 +168,14 @@ public class MyActivity extends Activity implements CameraPreview.CapturedCallba
             mRecordNum++;
             mButtonTextView.setText("" + mRecordNum + " got");
         }
+    }
+
+    @Override
+    public void findTarget(List<Rect> rectList) {
+        mPhotoFrameView.clear();
+        if (rectList != null)
+            mPhotoFrameView.addFrames(rectList);
+        mPhotoFrameView.postInvalidate();
     }
 
     @Override

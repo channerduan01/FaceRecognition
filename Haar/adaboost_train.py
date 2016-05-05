@@ -483,11 +483,11 @@ valid_label = test_label
 #valid_data = train_data
 #valid_label = train_label
 
-#filename = None
+filename = None
 #filename = ''
-filename = 'cascade_my_own_data_face_test.npy'
+#filename = 'cascade_my_own_data_face_test.npy'
 
-max_layer_num = 4
+max_layer_num = 6
 F_target = 0.01
 constaints_list = [(0.99,0.5),(0.98,0.7),(0.98,0.7),(0.98,0.7),(0.99,0.7), \
                    (0.99,0.7),(0.99,0.7),(0.99,0.7),(0.99,0.7),(0.99,0.7), \

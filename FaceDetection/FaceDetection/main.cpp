@@ -84,12 +84,12 @@ public:
 Matrix * integralspace = NULL;  // calculating space
 Matrix * integralspace_tmp = NULL;
 int * ii;
-int columns = 0;
+int x_shift, y_shift, columns;
 int calcuRectangle(int x_end, int y_end, int w, int h) {
-    return ii[y_end*columns+x_end]
-    + ii[(y_end-h)*columns+x_end-w]
-    - ii[y_end*columns+x_end-w]
-    - ii[(y_end-h)*columns+x_end];
+    return ii[(y_end+y_shift)*columns+x_end+x_shift]
+    + ii[(y_end-h+y_shift)*columns+x_end-w+x_shift]
+    - ii[(y_end+y_shift)*columns+x_end-w+x_shift]
+    - ii[(y_end-h+y_shift)*columns+x_end+x_shift];
 }
 int calcuBasis2Haar(bool is_trans, int x, int y, int w, int h) {
     if (!is_trans)
@@ -104,9 +104,8 @@ int calcuGap3Haar(bool is_trans, int x, int y, int w, int h) {
     else
         return calcuRectangle(y, x, h, w/3) + calcuRectangle(y, x-2*w/3, h, w/3) - 2*calcuRectangle(y, x-w/3, h, w/3);
 }
-int calcuSquare4Haar(bool is_trans, int x, int y, int w, int h) {
-    return calcuRectangle(x, y, w/2, h/2) + calcuRectangle(x-w/2, y-h/2, w/2, h/2) \
-    - calcuRectangle(x-w/2, y, w/2, h/2) + calcuRectangle(x, y-h/2, w/2, h/2);
+int calcuSquare4Haar(int x, int y, int w, int h) {
+    return calcuRectangle(x, y, w/2, h/2) + calcuRectangle(x-w/2, y-h/2, w/2, h/2) - calcuRectangle(x-w/2, y, w/2, h/2) + calcuRectangle(x, y-h/2, w/2, h/2);
 }
 
 void init(int rows, int cols) {
@@ -114,6 +113,7 @@ void init(int rows, int cols) {
     integralspace_tmp = new Matrix(rows, cols);
     ii = integralspace->p_data;
     columns = integralspace->cols;
+    x_shift = y_shift = 0;
 }
 void calcuIntegral(Matrix * img) {
     integralspace_tmp->reset();
@@ -135,6 +135,7 @@ void calcuIntegral(Matrix * img) {
             *(integralspace_tmp->p_data+i*img->cols+j);
 }
 Matrix * reverseIntegral() {
+    x_shift = y_shift = 0;
     Matrix * res = new Matrix(integralspace_tmp->rows, integralspace_tmp->cols);
     int i, j;
     for (i = 1;i < integralspace->rows;i++)
@@ -143,7 +144,7 @@ Matrix * reverseIntegral() {
     return res;
 }
 
-bool checkByCascade(Cascade & cascade) {
+bool checkByCascade(const Cascade & cascade) {
     int i, j, value;
     float res_sum, a_sum;
     Adaboost * p_ada;
@@ -157,75 +158,173 @@ bool checkByCascade(Cascade & cascade) {
             switch (p_weak->haar_type) {
                 case 0:
                     value = calcuBasis2Haar(p_weak->has_trans, p_weak->x, p_weak->y, p_weak->w, p_weak->h);
-//                    p_weak->printInfo();
-//                    cout<<value<<endl;
                     break;
                 case 1:
                     value = calcuGap3Haar(p_weak->has_trans, p_weak->x, p_weak->y, p_weak->w, p_weak->h);
                     break;
                 default:
-                    value = calcuSquare4Haar(p_weak->has_trans, p_weak->x, p_weak->y, p_weak->w, p_weak->h);
+                    value = calcuSquare4Haar(p_weak->x, p_weak->y, p_weak->w, p_weak->h);
                     break;
             }
-//            cout << "   " << p_weak->haar_type <<":" << value << endl;
             if (p_weak->best_p) {
                 if (value <= p_weak->thre) res_sum += p_weak->a;
             } else {
                 if (value > p_weak->thre) res_sum += p_weak->a;
             }
         }
-        cout << res_sum << " " << a_sum << endl;
+        //        cout << res_sum << " " << a_sum << endl;
         if (res_sum < 0.5f * a_sum * p_ada->fadeFactor)
             return false;
     }
     return true;
 }
 
-
+class Evaluation {
+public:
+    int totalSum;
+    float sXs;
+    float sYs;
+    float ws;
+    float hs;
+    
+    int s_x, s_y, w, h;
+    
+    void reset() {
+        totalSum = 0;
+        sXs = sYs = ws = hs = 0;
+    }
+    void add(int sum, float start_x, float start_y, int w, int h) {
+        if (sum) {
+            sXs += start_x*sum;
+            sYs += start_y*sum;
+            ws += w*sum;
+            hs += h*sum;
+            totalSum += sum;
+        }
+    }
+    bool check() {
+        if (totalSum > 3000) {
+            cout << totalSum << endl;
+            s_x = (int) (sXs/totalSum+0.5f);
+            s_y = (int) (sYs/totalSum+0.5f);
+            w = (int) (ws/totalSum+0.5f);
+            h = (int) (hs/totalSum+0.5f);
+            return true;
+        } else return false;
+    }
+};
 
 
 string cascade_filename = "/Users/channerduan/Documents/study/Face_Recog/Haar/cascade_my_own_data_face";
 
-int main(int argc, char** argv) {
-    Cascade cascade = Cascade::generate(cascade_filename);
-    cascade = cascade.scaled(16);
-//    cascade.printInfo();
-    
-    Mat img = imread("/Users/channerduan/Documents/study/Face_Recog/Haar/temp52.jpg", CV_LOAD_IMAGE_UNCHANGED);
-    init(img.rows, img.cols);
-    Mat grayImg;
-    cvtColor(img, grayImg, cv::COLOR_BGR2GRAY);
-    Matrix input(grayImg);
-    calcuIntegral(&input);
-    
-    checkByCascade(cascade);
-    
-//    int sum_ = 0;
-//    int i, j;
-//    int max_rows = integralspace->rows-cascade.w_height;
-//    int max_cols = integralspace->cols-cascade.w_width;
-//    for (i = 0;i < max_rows;i+=2) {
-//        for (j = 0;j < max_cols;j+=2) {
-//            if (checkByCascade(cascade)) sum_++;
-//        }
-//    }
-//    cout << sum_ <<endl;
-    
-    Mat res = *reverseIntegral()->getMatForm();
-//    cout << integralspace->getSum() << endl;
-    
-    namedWindow("MyWindow", CV_WINDOW_AUTOSIZE);
-    imshow("MyWindow", res);
-    waitKey(0);
-    destroyWindow("MyWindow");
+string test_pic_filename = "/Users/channerduan/Documents/study/Face_Recog/Haar/temp52.jpg";
+//string test_pic_filename = "/Users/channerduan/Documents/study/Face_Recog/Haar/my_profile.jpg";
 
+
+#define PROPER_LAYER_NUM 5
+#define LOWER_LIMIT 0.2f
+#define UPPER_LIMIT 0.8f
+
+Cascade cascades[PROPER_LAYER_NUM];
+Evaluation evaluation;
+Cascade cascade_base = Cascade::generate(cascade_filename);
+void initCascade(int rows, int cols) {
+    int lower_scale, upper_scale;
+    if ((float)cols/cascade_base.w_width < (float)rows/cascade_base.w_height) {
+        lower_scale = (float)cols/cascade_base.w_width*LOWER_LIMIT;
+        upper_scale = (float)cols/cascade_base.w_width*UPPER_LIMIT;
+    } else {
+        lower_scale = (float)rows/cascade_base.w_height*LOWER_LIMIT;
+        upper_scale = (float)rows/cascade_base.w_height*UPPER_LIMIT;
+    }
+    float search_gap = (float)(upper_scale-lower_scale)/(PROPER_LAYER_NUM-1);
+    float scale = upper_scale;
+    for (int i = 0;i < PROPER_LAYER_NUM;i++, scale -= search_gap) {
+        cascades[i] = cascade_base.scaled(scale);
+    }
+}
+
+void evaluateIntegral() {
+    Cascade *p_cascade = cascades;
+    evaluation.reset();
+    for (int i = 0;i < PROPER_LAYER_NUM;i++, p_cascade++) {
+        float x_face, y_face;
+        int x_tmp, y_tmp;
+        int sum_ = 0;
+        int max_rows = integralspace->rows-cascades[i].w_height;
+        int max_cols = integralspace->cols-cascades[i].w_width;
+        x_tmp = y_tmp = 0;
+        for (y_shift = 0;y_shift < max_rows;y_shift+=2)
+            for (x_shift = 0;x_shift < max_cols;x_shift+=2)
+                if (checkByCascade(cascades[i])) {
+                    sum_++;
+                    x_tmp += x_shift;
+                    y_tmp += y_shift;
+                }
+        if (sum_) {
+            x_face = (float) x_tmp/sum_;
+            y_face =(float) y_tmp/sum_;
+        }
+        evaluation.add(sum_, x_face, y_face, cascades[i].w_width, cascades[i].w_height);
+//        cout << sum_ << ": (" << x_face << ", " << y_face << ")" << endl;
+        //        rectangle(img, Rect(x_face,y_face,cascades[i].w_width,cascades[i].w_height), Scalar(0,0,255), 2);
+    }
+}
+
+int main(int argc, char** argv) {
+    //    Mat img = imread(test_pic_filename, CV_LOAD_IMAGE_UNCHANGED);
+    //    init(img.rows, img.cols);
+    //    initCascade(img.rows, img.cols);
+    //
+    //    Mat grayImg;
+    //    cvtColor(img, grayImg, cv::COLOR_BGR2GRAY);
+    //    Matrix input(grayImg);
+    //    calcuIntegral(&input);
+    //
+    //    long start = clock();
+    //    evaluateIntegral();
+    //    cout << "evaluation: " << evaluation.check() << endl;
+    //    cout << "time: " << (double)(clock() - start) / CLOCKS_PER_SEC << "s" << endl;
+    //
+    //    Mat res = *reverseIntegral()->getMatForm();
+    //    cvtColor(res, img, cv::COLOR_GRAY2BGR);
+    //    rectangle(img, Rect(evaluation.s_x, evaluation.s_y, evaluation.w, evaluation.h), Scalar(0,255,255), 2);
+    //
+    //    namedWindow("MyWindow", CV_WINDOW_AUTOSIZE);
+    //    imshow("MyWindow", img);
+    //    waitKey(0);
+    //    destroyWindow("MyWindow");
     
-    
-//    for (int i = 0;i < 1000;i++) {
-//        Matrix a(3, 3);
-//        a.printout();
-//    }
-    
+    char c;
+    Mat frame;
+    VideoCapture cam(0);
+    if (!cam.isOpened())
+        return -1;
+    int width_resolution = 640, height_resolution = 480;
+    cam.set(CV_CAP_PROP_FRAME_WIDTH,width_resolution);
+    cam.set(CV_CAP_PROP_FRAME_HEIGHT,height_resolution);
+    init(height_resolution, width_resolution);
+    initCascade(height_resolution, width_resolution);
+    namedWindow("camera",1);
+    while(1)
+    {
+        cam >> frame;
+        if(frame.empty()) return -1;
+        Mat grayImg;
+        cvtColor(frame, grayImg, cv::COLOR_BGR2GRAY);
+        Matrix input(grayImg);
+        calcuIntegral(&input);
+        evaluateIntegral();
+        cvtColor(grayImg, frame, cv::COLOR_GRAY2BGR);
+//        rectangle(frame, Rect(0,0,100,100), Scalar(0,0,255), 3);
+        if (evaluation.check())
+            rectangle(frame, Rect(evaluation.s_x, evaluation.s_y, evaluation.w, evaluation.h), Scalar(0,255,255), 2);
+        imshow("camera",frame);
+        c = (char) waitKey(40);
+        if(27 == c)
+            break;
+    }
+    destroyWindow("camera");
     return 0;
 }
 
