@@ -1,4 +1,4 @@
-package com.cdd.detection;
+package com.cdd.detection.common;
 
 import android.app.Application;
 import com.cdd.detection.utils.FileEnvironment;

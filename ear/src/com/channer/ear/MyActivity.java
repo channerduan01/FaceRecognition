@@ -20,7 +20,6 @@ public class MyActivity extends Activity implements CameraPreview.CapturedCallba
 
     private Camera mCamera = null;
     private CameraPreview mPreview = null;
-    private PhotoFrameView mPhotoFrameView = null;
 
     private ImageView mButtonImageView = null;
     private TextView mButtonTextView = null;
@@ -88,6 +87,7 @@ public class MyActivity extends Activity implements CameraPreview.CapturedCallba
         mButtonImageView = (ImageView) findViewById(R.id.iv_btn);
         mButtonImageView.setOnClickListener(this);
         mButtonTextView = (TextView) findViewById(R.id.tv_btn);
+        mButtonTextView.setOnClickListener(this);
     }
 
     private void initCamera() {
@@ -109,9 +109,6 @@ public class MyActivity extends Activity implements CameraPreview.CapturedCallba
                 new FrameLayout.LayoutParams(v_width, v_height);
         layoutParams.setMargins(0, (int) ((metrics.heightPixels - v_height) / 2f + 0.5f), 0, 0);
         container.addView(mPreview, layoutParams);
-        mPhotoFrameView = new PhotoFrameView(this);
-        container.addView(mPhotoFrameView, layoutParams);
-        mPhotoFrameView.addFrame(new Rect(172, 255, 245, 245));
     }
 
     /**
@@ -171,17 +168,10 @@ public class MyActivity extends Activity implements CameraPreview.CapturedCallba
     }
 
     @Override
-    public void findTarget(List<Rect> rectList) {
-        mPhotoFrameView.clear();
-        if (rectList != null)
-            mPhotoFrameView.addFrames(rectList);
-        mPhotoFrameView.postInvalidate();
-    }
-
-    @Override
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.iv_btn:
+            case R.id.tv_btn:
                 if (mRecordFlag) {
                     resetRecord();
                 } else {

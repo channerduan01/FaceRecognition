@@ -1,4 +1,4 @@
-package com.cdd.detection;
+package com.cdd.detection.views;
 
 import android.content.Context;
 import android.graphics.ImageFormat;
@@ -11,12 +11,12 @@ import java.io.IOException;
 /**
  * Created by channerduan on 5/5/16.
  */
-class CameraPreviewView extends SurfaceView implements SurfaceHolder.Callback {
+public class CameraPreviewView extends SurfaceView implements SurfaceHolder.Callback {
     SurfaceHolder mHolder;
     Camera mCamera;
     Camera.PreviewCallback previewCallback;
 
-    CameraPreviewView(Context context, Camera camera, Camera.PreviewCallback previewCallback) {
+    public CameraPreviewView(Context context, Camera camera, Camera.PreviewCallback previewCallback) {
         super(context);
         this.mCamera = camera;
         this.previewCallback = previewCallback;
