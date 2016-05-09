@@ -25,6 +25,9 @@ import static com.googlecode.javacv.cpp.opencv_objdetect.cvHaarDetectObjects;
  */
 public class DetectEngine implements Camera.PreviewCallback {
 
+
+    private 
+
     public interface CapturedCallback {
         void findTarget(List<Rect> rectList, IplImage data, int width, int height);
     }
@@ -117,6 +120,8 @@ public class DetectEngine implements Camera.PreviewCallback {
 //                            r.y() * SUBSAMPLING_FACTOR,
 //                            r.width() * SUBSAMPLING_FACTOR,
 //                            r.height() * SUBSAMPLING_FACTOR));
+
+                    r.height() *
 
                     rectList.add(new Rect(r.x(),r.y(),r.width(),r.height()));
                 }

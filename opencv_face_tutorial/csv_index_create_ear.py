@@ -1,7 +1,7 @@
 import os.path
 
 
-BASE_PATH="/Users/channerduan/Desktop/Biometrics/DatabaseEars_Southampton/DatabaseEarsCropped"
+BASE_PATH="/Users/channerduan/Documents/study/Face_Recog/DatabaseEars_Southampton/DatabaseEarsCropped"
 SEPARATOR=";"
 
 for filename in os.listdir(BASE_PATH):

@@ -21,11 +21,33 @@ public class FileEnvironment {
             return;
         }
         baseAppOutputPath = file.toString();
+        file = new File(baseAppOutputPath + "/images/");
+        if (!file.exists()) {
+            file.mkdir();
+        }
         Log.e("channer test", "got basic filepath: " + baseAppOutputPath);
     }
 
     public static String getTmpImagePath() {
         return baseAppOutputPath + "/images/";
+    }
+
+    public static void delete(File file) {
+        if (file.isFile()) {
+            file.delete();
+            return;
+        }
+        if(file.isDirectory()){
+            File[] childFiles = file.listFiles();
+            if (childFiles == null || childFiles.length == 0) {
+                file.delete();
+                return;
+            }
+            for (int i = 0; i < childFiles.length; i++) {
+                delete(childFiles[i]);
+            }
+            file.delete();
+        }
     }
 
 }

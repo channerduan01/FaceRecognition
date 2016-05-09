@@ -2,12 +2,15 @@ package com.cdd.detection;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.hardware.Camera;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.widget.FrameLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 import com.cdd.detection.imagebasis.Rect;
 import com.cdd.detection.utils.CameraUtils;
 import com.cdd.detection.utils.FileEnvironment;
@@ -17,27 +20,46 @@ import com.cdd.detection.views.PhotoFrameView;
 import com.googlecode.javacv.cpp.opencv_core;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
 
-import static com.googlecode.javacv.cpp.opencv_core.IPL_DEPTH_8U;
-import static com.googlecode.javacv.cpp.opencv_core.cvSetImageROI;
 import static com.googlecode.javacv.cpp.opencv_highgui.cvSaveImage;
 
-public class MyActivity extends Activity implements DetectEngine.CapturedCallback {
+public class ShootActivity extends Activity implements DetectEngine.CapturedCallback {
+
+    public static final String INTENT_KEY_COLLECT_NUMBER = "INTENT_KEY_COLLECT_NUMBER";
+    public static final String INTENT_KEY_COLLECT_DIRECTORY = "INTENT_KEY_COLLECT_DIRECTORY";
+    public static final String INTENT_KEY_COLLECT_START_NUM = "INTENT_KEY_COLLECT_START_NUM";
+
+
+
+
+    private int mDetectTargetNumber = 0;
+    private int mDetectNumber = 0;
+    private String mDetectSaveDirectory = "";
+    private int mDetectSaveStartIndex = 0;
+
+
     private PhotoFrameView photoFrameView;
     private CameraPreviewView cameraPreviewView;
 
     private DetectEngine detectEngine;
-
 
     private TextView fpsTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
+        setContentView(R.layout.shoot_layout);
+        mDetectTargetNumber = getIntent().getIntExtra(INTENT_KEY_COLLECT_NUMBER, 0);
+        mDetectNumber = 0;
+        mDetectSaveDirectory = getIntent().getStringExtra(INTENT_KEY_COLLECT_DIRECTORY);
+        mDetectSaveStartIndex = getIntent().getIntExtra(INTENT_KEY_COLLECT_START_NUM, 0);
+        if (mDetectTargetNumber <= 0 || mDetectSaveStartIndex <= 0 || TextUtils.isEmpty(mDetectSaveDirectory)) {
+            Toast.makeText(this, "Parameters error!!!", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+
         try {
             initCamera();
             initUI();
@@ -92,8 +114,17 @@ public class MyActivity extends Activity implements DetectEngine.CapturedCallbac
 //            opencv_core.IplImage image = opencv_core.IplImage.create(height, width, IPL_DEPTH_8U, 1);
 //            ByteBuffer imageBuffer = image.getByteBuffer();
 //            imageBuffer.put(data, 0, width*height);
-            cvSaveImage(FileEnvironment.getTmpImagePath() + "/test" + (int)frameNumber + ".jpg",
+
+            cvSaveImage(mDetectSaveDirectory + "/" + (mDetectSaveStartIndex + mDetectNumber) + ".jpg",
                     ImgUtils.crop(data, rectList.get(0)));
+            mDetectNumber++;
+            if (mDetectNumber == mDetectTargetNumber) {
+                Intent intent = new Intent();
+//                intent.putExtra(INTENT_KEY_COLLECT_NUMBER, true);
+                setResult(Activity.RESULT_OK, intent);
+                detectEngine.setCallback(null);
+                finish();
+            }
         }
     }
 }
