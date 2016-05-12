@@ -1,12 +1,8 @@
 function fv = addvector(features,sample)
-[rows, cols] = size(features);
-num = length(sample);
+[~, cols] = size(features);
 fv=features;
-for i=1:rows
-    for j=1:cols
-        if features(i,j) == Inf
-            fv(i,j:j+num-1) = sample;
-            return;
-        end
+for i=1:cols
+    if features(1,i) == Inf
+        fv(:,i) = sample;
     end
 end

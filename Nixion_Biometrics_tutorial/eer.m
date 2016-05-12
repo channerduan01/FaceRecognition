@@ -1,9 +1,10 @@
 function [results] = eer(features, samples_num, threshold)
 %[tar,far,frr,trr]
-[rows, ~] = size(features);
+[~, cols] = size(features);
+subjects_num = cols/samples_num;
 % initialise rates to nothing
 results = zeros(4,1);
-for i=1:rows
+for i=1:subjects_num
     for j=1:samples_num
         takenout = featurevector(features,samples_num,i,j);
         features = removevector(features,samples_num,i,j);

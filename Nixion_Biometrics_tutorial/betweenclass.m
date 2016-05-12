@@ -1,9 +1,10 @@
 function [distances] = betweenclass(features,samples_num)
-[rows, cols] = size(features);
-distances = zeros(cols*(cols-1)-30,1);
+[~, cols] = size(features);
+subjects_num = cols/samples_num;
+distances = zeros(1,subjects_num*(subjects_num-1)*samples_num*samples_num);
 index = 1;
-for i=1:rows %% all subjects
-    for j=1:rows
+for i=1:subjects_num %% all subjects
+    for j=1:subjects_num
         if (i == j), continue; end
 %         fprintf('%d -> %d\n',i,j) 
         for i1=1:samples_num %% and all samples
