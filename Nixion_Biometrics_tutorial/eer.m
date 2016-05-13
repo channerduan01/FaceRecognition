@@ -1,7 +1,10 @@
 function [results] = eer(features, samples_num, threshold)
 %[tar,far,frr,trr]
-[~, cols] = size(features);
-subjects_num = cols/samples_num;
+if ndims(features) == 2
+    subjects_num = size(features,2)/samples_num;   
+else
+    subjects_num = size(features,3)/samples_num;  
+end
 % initialise rates to nothing
 results = zeros(4,1);
 for i=1:subjects_num

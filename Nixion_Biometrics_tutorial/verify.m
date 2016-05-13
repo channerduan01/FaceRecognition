@@ -1,6 +1,9 @@
 function [accept] = verify(features,samples_num,sample,threshold)
-[~, cols] = size(features);
-subjects_num = cols/samples_num;
+if ndims(features) == 2
+    subjects_num = size(features,2)/samples_num;   
+else
+    subjects_num = size(features,3)/samples_num;  
+end
 accept = 0;
 for i=1:subjects_num
     for j=1:samples_num

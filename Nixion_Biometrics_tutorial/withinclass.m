@@ -1,6 +1,9 @@
 function [distancebetweensamples] = withinclass(features,samples_num)
-[~, cols] = size(features);
-subjects_num = cols/samples_num;
+if ndims(features) == 2
+    subjects_num = size(features,2)/samples_num;
+else
+    subjects_num = size(features,3)/samples_num;
+end
 distancebetweensamples = zeros(1,subjects_num*samples_num*(samples_num-1));
 index = 1;
 for i=1:subjects_num %% for same subjects 

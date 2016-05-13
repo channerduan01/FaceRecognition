@@ -217,7 +217,7 @@ public:
 
 string cascade_filename = "/Users/channerduan/Documents/study/Face_Recog/Haar/cascade_my_own_data_face";
 
-string test_pic_filename = "/Users/channerduan/Documents/study/Face_Recog/Haar/temp52.jpg";
+//string test_pic_filename = "/Users/channerduan/Documents/study/Face_Recog/Haar/temp52.jpg";
 //string test_pic_filename = "/Users/channerduan/Documents/study/Face_Recog/Haar/my_profile.jpg";
 
 
@@ -317,8 +317,9 @@ int main(int argc, char** argv) {
         evaluateIntegral();
         cvtColor(grayImg, frame, cv::COLOR_GRAY2BGR);
 //        rectangle(frame, Rect(0,0,100,100), Scalar(0,0,255), 3);
-        if (evaluation.check())
+        if (evaluation.check()) {
             rectangle(frame, Rect(evaluation.s_x, evaluation.s_y, evaluation.w, evaluation.h), Scalar(0,255,255), 2);
+        }
         imshow("camera",frame);
         c = (char) waitKey(40);
         if(27 == c)

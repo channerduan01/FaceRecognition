@@ -1,6 +1,9 @@
 function [rate] = recognitionrateranked(features,samples_num)
-[~, cols] = size(features);
-subjects_num = cols/samples_num;
+if ndims(features) == 2
+    subjects_num = size(features,2)/samples_num;   
+else
+    subjects_num = size(features,3)/samples_num;  
+end
 rate = zeros (subjects_num,1) ; % initialise rates to nothing
 % test_v = 0;
 for i=1:subjects_num
