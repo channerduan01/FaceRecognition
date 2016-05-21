@@ -10,8 +10,8 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.widget.FrameLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 import com.cdd.detection.imagebasis.Rect;
+import com.cdd.detection.matching.DataEngine;
 import com.cdd.detection.utils.CameraUtils;
 import com.cdd.detection.utils.FileEnvironment;
 import com.cdd.detection.utils.ImgUtils;
@@ -26,18 +26,18 @@ import static com.googlecode.javacv.cpp.opencv_highgui.cvSaveImage;
 
 public class ShootActivity extends Activity implements DetectEngine.CapturedCallback {
 
+    public static final int MATCH_CON_THRESHOLD = 3;
+
     public static final String INTENT_KEY_COLLECT_NUMBER = "INTENT_KEY_COLLECT_NUMBER";
-    public static final String INTENT_KEY_COLLECT_DIRECTORY = "INTENT_KEY_COLLECT_DIRECTORY";
-    public static final String INTENT_KEY_COLLECT_START_NUM = "INTENT_KEY_COLLECT_START_NUM";
+    public static final String INTENT_KEY_COLLECT_SUBJECT_NAME = "INTENT_KEY_COLLECT_SUBJECT_NAME";
 
-
-
-
+    private boolean mIsSampleMode = false;
+    // params for sample
     private int mDetectTargetNumber = 0;
-    private int mDetectNumber = 0;
-    private String mDetectSaveDirectory = "";
-    private int mDetectSaveStartIndex = 0;
-
+    private String mSubjectName = "";
+    // params for verify
+    private int mMatchConsNum = 0;
+    private String mMatchPrevious = "";
 
     private PhotoFrameView photoFrameView;
     private CameraPreviewView cameraPreviewView;
@@ -50,21 +50,19 @@ public class ShootActivity extends Activity implements DetectEngine.CapturedCall
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.shoot_layout);
-        mDetectTargetNumber = getIntent().getIntExtra(INTENT_KEY_COLLECT_NUMBER, 0);
-        mDetectNumber = 0;
-        mDetectSaveDirectory = getIntent().getStringExtra(INTENT_KEY_COLLECT_DIRECTORY);
-        mDetectSaveStartIndex = getIntent().getIntExtra(INTENT_KEY_COLLECT_START_NUM, 0);
-        if (mDetectTargetNumber <= 0 || mDetectSaveStartIndex <= 0 || TextUtils.isEmpty(mDetectSaveDirectory)) {
-            Toast.makeText(this, "Parameters error!!!", Toast.LENGTH_LONG).show();
-            finish();
-            return;
+        mSubjectName = getIntent().getStringExtra(INTENT_KEY_COLLECT_SUBJECT_NAME);
+        if (TextUtils.isEmpty(mSubjectName)) {
+            mIsSampleMode = false;
+        } else {
+            mIsSampleMode = true;
+            mDetectTargetNumber = getIntent().getIntExtra(INTENT_KEY_COLLECT_NUMBER, 0);
         }
-
         try {
             initCamera();
             initUI();
         } catch (IOException e) {
             new AlertDialog.Builder(this).setMessage(e.getMessage()).create().show();
+            finish();
         }
     }
 
@@ -99,31 +97,48 @@ public class ShootActivity extends Activity implements DetectEngine.CapturedCall
         container.addView(photoFrameView, layoutParams);
     }
 
-    float frameNumber = 0;
-    long startTimestampe = System.currentTimeMillis();
+    private float frameNumber = 0;
+    private long startTimestampe = System.currentTimeMillis();
 
 
     @Override
     public void findTarget(List<Rect> rectList, opencv_core.IplImage data, int width, int height) {
         photoFrameView.update(rectList, width, height);
         frameNumber++;
-
         float fps = frameNumber / (System.currentTimeMillis() - startTimestampe) * 1000f;
         fpsTextView.setText(String.format("%.1f", fps) + " fps");
         if (!rectList.isEmpty()) {
 //            opencv_core.IplImage image = opencv_core.IplImage.create(height, width, IPL_DEPTH_8U, 1);
 //            ByteBuffer imageBuffer = image.getByteBuffer();
 //            imageBuffer.put(data, 0, width*height);
-
-            cvSaveImage(mDetectSaveDirectory + "/" + (mDetectSaveStartIndex + mDetectNumber) + ".jpg",
-                    ImgUtils.crop(data, rectList.get(0)));
-            mDetectNumber++;
-            if (mDetectNumber == mDetectTargetNumber) {
-                Intent intent = new Intent();
-//                intent.putExtra(INTENT_KEY_COLLECT_NUMBER, true);
-                setResult(Activity.RESULT_OK, intent);
-                detectEngine.setCallback(null);
-                finish();
+            opencv_core.IplImage image = ImgUtils.resize(ImgUtils.crop(data, rectList.get(0)),
+                    new opencv_core.CvSize(DataEngine.FORM_WIDTH, DataEngine.FORM_HEIGHT));
+            if (!mIsSampleMode) {
+                String match = DataEngine.getInstance().matching(image);
+                if (match.equals("") || !match.equals(mMatchPrevious)) {
+                    mMatchPrevious = match;
+                    mMatchConsNum = 1;
+                } else {
+                    mMatchConsNum++;
+                    if (mMatchConsNum >= MATCH_CON_THRESHOLD) {
+                        Intent intent = new Intent();
+                        intent.putExtra(INTENT_KEY_COLLECT_SUBJECT_NAME, mMatchPrevious);
+                        setResult(Activity.RESULT_OK, intent);
+                        detectEngine.setCallback(null);
+                        finish();
+                    }
+                }
+            } else {
+                cvSaveImage(FileEnvironment.getTmpImagePath() + "/" + mSubjectName +
+                        "/" + String.valueOf(System.currentTimeMillis()) + ".jpg", image);
+                mDetectTargetNumber--;
+                if (mDetectTargetNumber <= 0) {
+                    Intent intent = new Intent();
+                    intent.putExtra(INTENT_KEY_COLLECT_SUBJECT_NAME, mSubjectName);
+                    setResult(Activity.RESULT_OK, intent);
+                    detectEngine.setCallback(null);
+                    finish();
+                }
             }
         }
     }

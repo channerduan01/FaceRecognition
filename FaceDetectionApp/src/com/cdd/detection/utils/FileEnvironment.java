@@ -11,6 +11,9 @@ import java.io.File;
 public class FileEnvironment {
 
     public static String baseAppOutputPath;
+    public static String tmpImagePath;
+    public static String matchingImagePath;
+
 
     /**
      * 初始化
@@ -20,16 +23,24 @@ public class FileEnvironment {
         if (file == null) {
             return;
         }
-        baseAppOutputPath = file.toString();
-        file = new File(baseAppOutputPath + "/images/");
-        if (!file.exists()) {
+        baseAppOutputPath = file.getAbsolutePath();
+        tmpImagePath = baseAppOutputPath + "/images/";
+        matchingImagePath = baseAppOutputPath + "/matching/";
+        file = new File(tmpImagePath);
+        if (!file.exists())
             file.mkdir();
-        }
-        Log.e("channer test", "got basic filepath: " + baseAppOutputPath);
+        file = new File(matchingImagePath);
+        if (!file.exists())
+            file.mkdir();
+        Log.e("channer test", "init basic filepath: " + baseAppOutputPath);
     }
 
     public static String getTmpImagePath() {
-        return baseAppOutputPath + "/images/";
+        return tmpImagePath;
+    }
+
+    public static String getMatchingImagePath() {
+        return matchingImagePath;
     }
 
     public static void delete(File file) {
@@ -48,6 +59,30 @@ public class FileEnvironment {
             }
             file.delete();
         }
+    }
+
+    public static boolean moveDirectory(String srcDirName, String destDirName) {
+        File srcDir = new File(srcDirName);
+        File destDir = new File(destDirName);
+        if(!destDir.exists())
+            destDir.mkdirs();
+        File[] sourceFiles = srcDir.listFiles();
+        for (File sourceFile : sourceFiles) {
+            if (sourceFile.isFile())
+                moveFile(sourceFile.getAbsolutePath(), destDir.getAbsolutePath());
+            else if (sourceFile.isDirectory())
+                moveDirectory(sourceFile.getAbsolutePath(),
+                        destDir.getAbsolutePath() + File.separator + sourceFile.getName());
+        }
+        return srcDir.delete();
+    }
+
+    public static boolean moveFile(String srcFileName, String destDirName) {
+        File srcFile = new File(srcFileName);
+        File destDir = new File(destDirName);
+        if (!destDir.exists())
+            destDir.mkdirs();
+        return srcFile.renameTo(new File(destDirName + File.separator + srcFile.getName()));
     }
 
 }

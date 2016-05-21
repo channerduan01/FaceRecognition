@@ -4,6 +4,7 @@ import com.cdd.detection.imagebasis.Rect;
 import com.googlecode.javacv.cpp.opencv_core;
 
 import static com.googlecode.javacv.cpp.opencv_core.*;
+import static com.googlecode.javacv.cpp.opencv_imgproc.cvResize;
 
 /**
  * Created by channerduan on 5/5/16.
@@ -21,5 +22,13 @@ public class ImgUtils {
         opencv_core.IplImage cropped = cvCreateImage(cvGetSize(iplSrc), iplSrc.depth(), iplSrc.nChannels());
         cvCopy(iplSrc, cropped);
         return cropped;
+    }
+
+    public static opencv_core.IplImage resize(opencv_core.IplImage iplSrc, CvSize cvSize) {
+        opencv_core.IplImage resizedImage =
+                opencv_core.IplImage.create(cvSize.width(), cvSize.height(), iplSrc.depth(),
+                        iplSrc.nChannels());
+        cvResize(iplSrc, resizedImage);
+        return resizedImage;
     }
 }

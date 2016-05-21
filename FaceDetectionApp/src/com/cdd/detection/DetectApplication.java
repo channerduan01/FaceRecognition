@@ -1,6 +1,7 @@
-package com.cdd.detection.common;
+package com.cdd.detection;
 
 import android.app.Application;
+import com.cdd.detection.matching.DataEngine;
 import com.cdd.detection.utils.FileEnvironment;
 
 /**
@@ -17,12 +18,13 @@ public class DetectApplication extends Application {
     public void onCreate() {
         super.onCreate();
         instance = this;
-
         initApp();
     }
 
     private void initApp() {
         FileEnvironment.initAppDirectory(DetectApplication.this);
+        // initial whole matching engine
+        DataEngine.getInstance().init();
     }
 
 
