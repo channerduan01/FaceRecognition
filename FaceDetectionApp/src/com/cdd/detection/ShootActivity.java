@@ -26,7 +26,10 @@ import static com.googlecode.javacv.cpp.opencv_highgui.cvSaveImage;
 
 public class ShootActivity extends Activity implements DetectEngine.CapturedCallback {
 
-    public static final int MATCH_CON_THRESHOLD = 3;
+    private static final int MATCH_CON_THRESHOLD = 3;
+    private static final long START_BLOCK_TIME = 2 * 1000;
+    private static final long PREVIOUS_TIME_INTERVAL = 1 * 300;
+
 
     public static final String INTENT_KEY_COLLECT_NUMBER = "INTENT_KEY_COLLECT_NUMBER";
     public static final String INTENT_KEY_COLLECT_SUBJECT_NAME = "INTENT_KEY_COLLECT_SUBJECT_NAME";
@@ -35,6 +38,7 @@ public class ShootActivity extends Activity implements DetectEngine.CapturedCall
     // params for sample
     private int mDetectTargetNumber = 0;
     private String mSubjectName = "";
+    private long mDetectedTimestamp = 0;
     // params for verify
     private int mMatchConsNum = 0;
     private String mMatchPrevious = "";
@@ -44,7 +48,7 @@ public class ShootActivity extends Activity implements DetectEngine.CapturedCall
 
     private DetectEngine detectEngine;
 
-    private TextView fpsTextView;
+    private TextView notifyTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,6 +60,7 @@ public class ShootActivity extends Activity implements DetectEngine.CapturedCall
         } else {
             mIsSampleMode = true;
             mDetectTargetNumber = getIntent().getIntExtra(INTENT_KEY_COLLECT_NUMBER, 0);
+            mDetectedTimestamp = System.currentTimeMillis() + START_BLOCK_TIME;
         }
         try {
             initCamera();
@@ -67,7 +72,7 @@ public class ShootActivity extends Activity implements DetectEngine.CapturedCall
     }
 
     private void initUI() {
-        fpsTextView = (TextView) findViewById(R.id.tv_fps_txt);
+        notifyTextView = (TextView) findViewById(R.id.tv_fps_txt);
     }
 
     private void initCamera() throws IOException {
@@ -106,7 +111,6 @@ public class ShootActivity extends Activity implements DetectEngine.CapturedCall
         photoFrameView.update(rectList, width, height);
         frameNumber++;
         float fps = frameNumber / (System.currentTimeMillis() - startTimestampe) * 1000f;
-        fpsTextView.setText(String.format("%.1f", fps) + " fps");
         if (!rectList.isEmpty()) {
 //            opencv_core.IplImage image = opencv_core.IplImage.create(height, width, IPL_DEPTH_8U, 1);
 //            ByteBuffer imageBuffer = image.getByteBuffer();
@@ -114,6 +118,7 @@ public class ShootActivity extends Activity implements DetectEngine.CapturedCall
             opencv_core.IplImage image = ImgUtils.resize(ImgUtils.crop(data, rectList.get(0)),
                     new opencv_core.CvSize(DataEngine.FORM_WIDTH, DataEngine.FORM_HEIGHT));
             if (!mIsSampleMode) {
+                notifyTextView.setText("verifying... " + String.format("%.1f", fps) + " fps");
                 String match = DataEngine.getInstance().matching(image);
                 if (match.equals("") || !match.equals(mMatchPrevious)) {
                     mMatchPrevious = match;
@@ -129,15 +134,21 @@ public class ShootActivity extends Activity implements DetectEngine.CapturedCall
                     }
                 }
             } else {
-                cvSaveImage(FileEnvironment.getTmpImagePath() + "/" + mSubjectName +
-                        "/" + String.valueOf(System.currentTimeMillis()) + ".jpg", image);
-                mDetectTargetNumber--;
-                if (mDetectTargetNumber <= 0) {
-                    Intent intent = new Intent();
-                    intent.putExtra(INTENT_KEY_COLLECT_SUBJECT_NAME, mSubjectName);
-                    setResult(Activity.RESULT_OK, intent);
-                    detectEngine.setCallback(null);
-                    finish();
+                notifyTextView.setText("sampling... " + String.format("%.1f", fps) + " fps\nstill need: "
+                        + mDetectTargetNumber + " samples");
+                if (System.currentTimeMillis() - mDetectedTimestamp > PREVIOUS_TIME_INTERVAL) {
+                    mDetectedTimestamp = System.currentTimeMillis();
+                    cvSaveImage(FileEnvironment.getTmpImagePath() + "/" + mSubjectName +
+                            "/" + String.valueOf(System.currentTimeMillis()) + ".jpg", image);
+                    mDetectTargetNumber--;
+                    if (mDetectTargetNumber <= 0) {
+                        Intent intent = new Intent();
+                        intent.putExtra(INTENT_KEY_COLLECT_SUBJECT_NAME, mSubjectName);
+                        setResult(Activity.RESULT_OK, intent);
+                        detectEngine.setCallback(null);
+                        finish();
+                        return;
+                    }
                 }
             }
         }

@@ -1,11 +1,8 @@
 package com.cdd.detection.utils;
 
-import android.util.Log;
 import com.googlecode.javacv.cpp.opencv_core;
 
 import java.nio.FloatBuffer;
-
-import static com.googlecode.javacv.cpp.opencv_core.*;
 
 
 /**

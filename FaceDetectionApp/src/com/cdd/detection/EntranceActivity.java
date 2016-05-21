@@ -7,13 +7,19 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Vibrator;
+import android.speech.tts.TextToSpeech;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 import com.cdd.detection.matching.DataEngine;
 import com.cdd.detection.utils.FileEnvironment;
+import com.cdd.detection.views.dialoglist.ShareSelectDialog;
+import com.cdd.detection.views.dialoglist.ShareSelectDialogAdapter;
 
 import java.io.File;
+import java.util.Locale;
 
 /**
  * Created by channerduan on 5/8/16.
@@ -22,6 +28,11 @@ public class EntranceActivity extends Activity implements View.OnClickListener {
 
     public static final int REQUEST_CODE_SAMPLE = 100;
     public static final int REQUEST_CODE_VERIFY = 101;
+
+    private TextView mManageDataTextView;
+
+    private TextToSpeech mSpeechTool;
+    private boolean mIsSpeechReady = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -33,6 +44,25 @@ public class EntranceActivity extends Activity implements View.OnClickListener {
     private void init() {
         findViewById(R.id.tv_verify).setOnClickListener(this);
         findViewById(R.id.tv_sample).setOnClickListener(this);
+        mManageDataTextView = (TextView) findViewById(R.id.tv_manage);
+        updateManageText();
+        mManageDataTextView.setOnClickListener(this);
+
+        mSpeechTool = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if (status == TextToSpeech.SUCCESS) {
+                    //下面这句代码是主要的，设置语言，如果是英文的话，就用
+                    int result = mSpeechTool.setLanguage(Locale.ENGLISH);
+                    if (result == TextToSpeech.LANG_MISSING_DATA
+                            || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                        Log.e("lanageTag", "not use");
+                    } else {
+                        mIsSpeechReady = true;
+                    }
+                }
+            }
+        });
     }
 
     @Override
@@ -43,8 +73,13 @@ public class EntranceActivity extends Activity implements View.OnClickListener {
                 if (resultCode == RESULT_OK) {
                     String name = data.getStringExtra(ShootActivity.INTENT_KEY_COLLECT_SUBJECT_NAME);
                     new AlertDialog.Builder(this).setMessage("Recognized: " + name).create().show();
-                    Toast.makeText(this, "Verifying success!", Toast.LENGTH_SHORT).show();
+//                    Toast.makeText(this, "Verifying success!", Toast.LENGTH_SHORT).show();
                     ((Vibrator) getSystemService(Context.VIBRATOR_SERVICE)).vibrate(200);
+                    if (mIsSpeechReady) {
+                        mSpeechTool.stop();
+                        mSpeechTool.speak(name, TextToSpeech.QUEUE_FLUSH,
+                                null);
+                    }
                 } else {
                     Toast.makeText(this, "Verifying canceled...", Toast.LENGTH_SHORT).show();
                 }
@@ -55,6 +90,7 @@ public class EntranceActivity extends Activity implements View.OnClickListener {
                     ((Vibrator) getSystemService(Context.VIBRATOR_SERVICE)).vibrate(200);
                     DataEngine.getInstance().createSubject(
                             data.getStringExtra(ShootActivity.INTENT_KEY_COLLECT_SUBJECT_NAME));
+                    updateManageText();
                 } else {
                     Toast.makeText(this, "Sampling canceled...", Toast.LENGTH_SHORT).show();
                 }
@@ -73,12 +109,44 @@ public class EntranceActivity extends Activity implements View.OnClickListener {
             case R.id.tv_sample:
                 startSample();
                 break;
+            case R.id.tv_manage:
+                deleteSample();
+                break;
             default:
                 break;
         }
     }
 
+    private void updateManageText() {
+        mManageDataTextView.setText("Delete (" + DataEngine.getInstance().getSubjectNum() + ")");
+    }
+
+    private void deleteSample() {
+        if (DataEngine.getInstance().getSubjectNum() == 0) {
+            Toast.makeText(this, "You donot have any samples now!\nTry collect some!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final ShareSelectDialogAdapter adapter = new ShareSelectDialogAdapter(this, DataEngine.getInstance().getCoreData());
+        new ShareSelectDialog.Builder(this).setAdapter(adapter, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int position) {
+                DataEngine.getInstance().deleteSubjectByName(
+                        DataEngine.getInstance().getCoreData().get(position).name);
+                updateManageText();
+                Toast.makeText(EntranceActivity.this, "deleted", Toast.LENGTH_SHORT).show();
+            }
+        }).setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialogInterface) {
+            }
+        }).show();
+    }
+
     private void launchShootForVerify() {
+        if (DataEngine.getInstance().getSubjectNum() == 0) {
+            Toast.makeText(this, "You donot have any samples now!\nTry collect some!", Toast.LENGTH_SHORT).show();
+            return;
+        }
         Intent intent = new Intent(EntranceActivity.this, ShootActivity.class);
         startActivityForResult(intent, REQUEST_CODE_VERIFY);
     }
@@ -111,6 +179,7 @@ public class EntranceActivity extends Activity implements View.OnClickListener {
 //                            if (destDir.exists()) {
 //                                FileEnvironment.delete(destDir);
 //                            }
+//                            destDir.mkdir();
                             launchShootForSample(input);
                         }
                     }
@@ -119,6 +188,4 @@ public class EntranceActivity extends Activity implements View.OnClickListener {
                 .create();
         ad.show();
     }
-
-
 }

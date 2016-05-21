@@ -41,12 +41,20 @@ public class DataEngine {
     public void init() {
         loadBase();
         update();
+    }
 
-        if (getSubjectNum() > 0) {
-            Log.e("channer test", "channer test calculate distance: " +
-                    MatchUtils.calcuDistance(mData.get(0).listProjectOnBase.get(0),
-                            mData.get(0).listProjectOnBase.get(1)));
+    public List<SubjectBean> getCoreData() {
+        return mData;
+    }
+
+    public void deleteSubjectByName(String name) {
+        for (SubjectBean bean : mData) {
+            if (bean.name.equals(name)) {
+                FileEnvironment.delete(new File(FileEnvironment.getMatchingImagePath()
+                        + "/" + name));
+            }
         }
+        update();
     }
 
     public int getSubjectNum() {
@@ -111,6 +119,7 @@ public class DataEngine {
     }
 
     private void update() {
+        mData.clear();
         String filepath = FileEnvironment.getMatchingImagePath();
         Log.e("channer test", "channer test " + filepath);
         File file = new File(filepath);
