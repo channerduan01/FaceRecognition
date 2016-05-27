@@ -1,8 +1,8 @@
-package com.cdd.detection;
+package com.cdd.soton;
 
 import android.app.Application;
-import com.cdd.detection.recognize.MatchEngine;
-import com.cdd.detection.utils.FileEnvironment;
+import com.cdd.soton.recognize.MatchEngine;
+import com.cdd.soton.utils.FileEnvironment;
 
 /**
  * Created by channerduan on 4/20/16.

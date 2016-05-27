@@ -1,4 +1,4 @@
-package com.cdd.detection.utils;
+package com.cdd.soton.utils;
 
 import android.hardware.Camera;
 import android.util.Log;

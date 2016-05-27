@@ -1,6 +1,6 @@
-package com.cdd.detection.utils;
+package com.cdd.soton.utils;
 
-import com.cdd.detection.detect.Rect;
+import com.cdd.soton.detect.Rect;
 import com.googlecode.javacv.cpp.opencv_core;
 
 import static com.googlecode.javacv.cpp.opencv_core.*;

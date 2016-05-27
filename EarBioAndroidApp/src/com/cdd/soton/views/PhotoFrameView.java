@@ -1,11 +1,11 @@
-package com.cdd.detection.views;
+package com.cdd.soton.views;
 
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.view.View;
-import com.cdd.detection.detect.Rect;
+import com.cdd.soton.detect.Rect;
 
 import java.util.ArrayList;
 import java.util.List;

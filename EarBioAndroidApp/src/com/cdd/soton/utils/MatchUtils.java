@@ -1,4 +1,4 @@
-package com.cdd.detection.utils;
+package com.cdd.soton.utils;
 
 import com.googlecode.javacv.cpp.opencv_core;
 

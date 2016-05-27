@@ -1,4 +1,4 @@
-package com.cdd.detection.views.dialoglist;
+package com.cdd.soton.views.dialoglist;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -9,7 +9,7 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import com.cdd.detection.recognize.SubjectBean;
+import com.cdd.soton.recognize.SubjectBean;
 
 import java.util.List;
 

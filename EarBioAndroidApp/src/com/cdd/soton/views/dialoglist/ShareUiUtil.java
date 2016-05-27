@@ -1,4 +1,4 @@
-package com.cdd.detection.views.dialoglist;
+package com.cdd.soton.views.dialoglist;
 
 import android.content.Context;
 

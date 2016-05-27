@@ -1,8 +1,8 @@
-package com.cdd.detection.recognize;
+package com.cdd.soton.recognize;
 
 import android.util.Log;
-import com.cdd.detection.utils.FileEnvironment;
-import com.cdd.detection.utils.MatchUtils;
+import com.cdd.soton.utils.FileEnvironment;
+import com.cdd.soton.utils.MatchUtils;
 import com.googlecode.javacpp.Pointer;
 import com.googlecode.javacv.cpp.opencv_core;
 

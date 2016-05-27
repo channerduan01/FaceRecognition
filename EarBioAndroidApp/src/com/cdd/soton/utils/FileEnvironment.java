@@ -1,9 +1,9 @@
-package com.cdd.detection.utils;
+package com.cdd.soton.utils;
 
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.util.Log;
-import com.cdd.detection.EarApplication;
+import com.cdd.soton.EarApplication;
 
 import java.io.*;
 

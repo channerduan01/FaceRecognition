@@ -1,4 +1,4 @@
-package com.cdd.detection.detect;
+package com.cdd.soton.detect;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -14,13 +14,13 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.widget.FrameLayout;
 import android.widget.TextView;
-import com.cdd.detection.R;
-import com.cdd.detection.recognize.MatchEngine;
-import com.cdd.detection.utils.CameraUtils;
-import com.cdd.detection.utils.FileEnvironment;
-import com.cdd.detection.utils.ImgUtils;
-import com.cdd.detection.views.CameraPreviewView;
-import com.cdd.detection.views.PhotoFrameView;
+import com.cdd.soton.R;
+import com.cdd.soton.recognize.MatchEngine;
+import com.cdd.soton.utils.CameraUtils;
+import com.cdd.soton.utils.FileEnvironment;
+import com.cdd.soton.utils.ImgUtils;
+import com.cdd.soton.views.CameraPreviewView;
+import com.cdd.soton.views.PhotoFrameView;
 import com.googlecode.javacv.cpp.opencv_core;
 
 import java.io.IOException;

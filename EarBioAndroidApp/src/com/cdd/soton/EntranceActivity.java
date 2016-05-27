@@ -1,4 +1,4 @@
-package com.cdd.detection;
+package com.cdd.soton;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -14,11 +14,11 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
-import com.cdd.detection.detect.ShootActivity;
-import com.cdd.detection.recognize.MatchEngine;
-import com.cdd.detection.utils.FileEnvironment;
-import com.cdd.detection.views.dialoglist.ShareSelectDialog;
-import com.cdd.detection.views.dialoglist.ShareSelectDialogAdapter;
+import com.cdd.soton.detect.ShootActivity;
+import com.cdd.soton.recognize.MatchEngine;
+import com.cdd.soton.utils.FileEnvironment;
+import com.cdd.soton.views.dialoglist.ShareSelectDialog;
+import com.cdd.soton.views.dialoglist.ShareSelectDialogAdapter;
 
 import java.io.File;
 import java.util.Timer;

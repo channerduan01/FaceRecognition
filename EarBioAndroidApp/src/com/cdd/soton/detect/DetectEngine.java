@@ -1,10 +1,9 @@
-package com.cdd.detection.detect;
+package com.cdd.soton.detect;
 
 import android.hardware.Camera;
-import com.cdd.detection.detect.Rect;
-import com.cdd.detection.recognize.MatchEngine;
-import com.cdd.detection.utils.FileEnvironment;
-import com.cdd.detection.utils.ImgUtils;
+import com.cdd.soton.recognize.MatchEngine;
+import com.cdd.soton.utils.FileEnvironment;
+import com.cdd.soton.utils.ImgUtils;
 import com.googlecode.javacpp.Loader;
 import com.googlecode.javacv.cpp.opencv_core;
 import com.googlecode.javacv.cpp.opencv_objdetect;

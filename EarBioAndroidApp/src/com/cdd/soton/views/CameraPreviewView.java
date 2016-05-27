@@ -1,4 +1,4 @@
-package com.cdd.detection.views;
+package com.cdd.soton.views;
 
 import android.content.Context;
 import android.graphics.ImageFormat;
