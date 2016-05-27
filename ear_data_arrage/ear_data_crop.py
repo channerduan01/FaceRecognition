@@ -4,8 +4,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-BASE_PATH="/Users/channerduan/Documents/study/Face_Recog/DatabaseEars_Southampton/DatabaseEars/"
-OUTPUT_PATH="/Users/channerduan/Documents/study/Face_Recog/Data/Ear_cropped_by_myself"
+#BASE_PATH="/Users/channerduan/Documents/study/Face_Recog/Data/DatabaseEars_Southampton/DatabaseEars/"
+BASE_PATH="/Users/channerduan/Documents/study/Face_Recog/Data/db_252_ears/"
+#OUTPUT_PATH="/Users/channerduan/Documents/study/Face_Recog/Data/Ear_cropped_by_myself"
+OUTPUT_PATH="/Users/channerduan/Documents/study/Face_Recog/Data/Ear_cropped_by_myself_test"
+
 SEPARATOR=";"
 
 left_ear_cascade = cv2.CascadeClassifier('cascade_files/haarcascade_mcs_leftear_.xml')
@@ -22,7 +25,8 @@ def makedir(path):
         os.mkdir(path)
 
 def readImage(filepath):
-    return cv2.cvtColor(cv2.imread(filepath), cv2.COLOR_BGR2GRAY)
+    return cv2.imread(filepath)
+#    return cv2.cvtColor(cv2.imread(filepath), cv2.COLOR_BGR2GRAY)
     
 def rotate_image(img, ang):
     rows,cols = img.shape
@@ -36,11 +40,13 @@ num_pic = 0
 num_detected = 0
 list_valid_person_id = []
 
+# choose the range of angle
+# angle_range = [0,1,-1,2,-2,3,-3,4,-4,5,-5]
+angle_range = [0]
 
-angle_range = [0,1,-1,2,-2,3,-3,4,-4,5,-5]
 tmp_count_num = 0
 for filename in os.listdir(BASE_PATH):
-    if filename.find('.jpg') == -1:
+    if filename.find('.jpg') == -1 and filename.find('.pgm') == -1:
        continue
     num_pic = num_pic+1
     person_id = int(filename.split('_')[0])   

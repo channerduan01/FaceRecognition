@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#AB9EF1"
+        >
+
+    <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:layout_marginRight="10dp"
+            android:layout_marginTop="30dp"
+            android:src="@drawable/ear_mark"
+            />
+
+    <LinearLayout
+            android:layout_width="180dp"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            >
+        <TextView
+                android:id="@+id/tv_verify"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:gravity="center"
+                android:text="Scan Ears"
+                android:textSize="25dp"
+                android:textColor="#FFFFFF"
+                android:background="#628E41"
+                />
+        <TextView
+                android:id="@+id/tv_sample"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:layout_marginTop="20dp"
+                android:text="Enrolment"
+                android:textSize="20dp"
+                android:textColor="#FFFFFF"
+                android:background="#127EF1"
+                />
+        <TextView
+                android:id="@+id/tv_setting"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:layout_marginTop="15dp"
+                android:text="Setting"
+                android:textSize="20dp"
+                android:textColor="#FFFFFF"
+                android:background="#127EF1"
+                />
+        <TextView
+                android:id="@+id/tv_manage"
+                android:layout_width="match_parent"
+                android:layout_height="45dp"
+                android:gravity="center"
+                android:layout_marginTop="35dp"
+                android:text="Delete data"
+                android:textSize="20dp"
+                android:textColor="#FFFFFF"
+                android:background="#916287"
+                />
+    </LinearLayout>
+    <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="80dp"
+            android:layout_marginBottom="30dp"
+            android:layout_alignParentBottom="true"
+            android:src="@drawable/southampton_logo"
+            />
+</RelativeLayout>

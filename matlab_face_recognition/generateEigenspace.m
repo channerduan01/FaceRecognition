@@ -1,4 +1,4 @@
-function [base, projection] = generateEigenspace(select_energy, image_matrix)
+function [base, mean_img, projection] = generateEigenspace(select_energy, image_matrix)
     mean_img = mean(image_matrix);
     tmp_image_matrix = zeros(size(image_matrix));
     for i=1:size(image_matrix,1)
@@ -11,5 +11,5 @@ function [base, projection] = generateEigenspace(select_energy, image_matrix)
         % convert back from dual space
         base(:, i) = eigen_values(i)^(-1/2) * tmp_image_matrix' * eigen_vectors(:, i);
     end
-    projection = image_matrix * base;
+    projection = tmp_image_matrix * base;
 end

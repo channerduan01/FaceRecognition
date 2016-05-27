@@ -23,7 +23,7 @@ for filename in os.listdir(BASE_PATH):
    print "%s%s%s\n" % (BASE_PATH+'/'+filename, SEPARATOR, new_file_path)   
    image = cv2.cvtColor(cv2.imread(BASE_PATH+'/'+filename),cv2.COLOR_RGB2GRAY)
    cv2.imwrite(new_file_path, image)   
-
+   
    
    
 

@@ -170,7 +170,7 @@ int main(int argc, const char *argv[]) {
         Mat grayscale = norm_0_255(ev.reshape(1, height));
         // Show the image & apply a Jet colormap for better sensing.
         Mat cgrayscale;
-        applyColorMap(grayscale, cgrayscale, COLORMAP_JET);
+        applyColorMap(grayscale, cgrayscale, COLORMAP_HOT);
         // Display or save:
         if(argc == 2) {
             imshow(format("eigenface_%d", i), cgrayscale);

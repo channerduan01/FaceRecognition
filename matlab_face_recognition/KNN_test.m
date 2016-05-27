@@ -1,4 +1,4 @@
-function accuracy = KNN_test(k, base, train_data_on_base, test_database, test_subject_range)
+function accuracy = KNN_test(k, threshold, base, mean_img, train_data_on_base, test_database, test_subject_range)
     if ndims(train_data_on_base) == 2   % compatibility design
         train_items_num = size(train_data_on_base, 1);
     else
@@ -19,9 +19,12 @@ function accuracy = KNN_test(k, base, train_data_on_base, test_database, test_su
                test_img = double(read(test_database(i),j));
            end
            for ii=1:length(dists)
-               dists(ii) = distanceCalculate(test_img, base, train_data_on_base, ii);   % compatibility design
+               dists(ii) = distanceCalculate(test_img, base, mean_img, train_data_on_base, ii);   % compatibility design
            end
            [dists, index] = sort(dists);
+           if threshold ~= 0 && dists(1) > threshold
+                continue;
+           end
            map = zeros(1,subjects_num);
            for ii=1:k
                face_idx = floor((index(ii)-1)/samples_train_num)+1;

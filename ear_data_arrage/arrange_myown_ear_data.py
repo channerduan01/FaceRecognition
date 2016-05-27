@@ -4,7 +4,9 @@ import numpy as np
 import shutil
 
 BASE_PATH="/Users/channerduan/Documents/study/Face_Recog/Data/Ear_cropped_by_myself"
-OUTPUT_PATH="/Users/channerduan/Documents/study/Face_Recog/Data/"
+#BASE_PATH="/Users/channerduan/Documents/study/Face_Recog/Data/Ear_cropped_by_myself_test"
+
+OUTPUT_PATH="/Users/channerduan/Documents/study/Face_Recog/Data/ear_data/"
 SEPARATOR=";"
 
 
@@ -12,14 +14,14 @@ def makedir(path):
     if (os.path.exists(path) == False):
         os.mkdir(path)
 
-map_person = np.zeros(200)
+map_person = np.zeros(500)
 dict_ = {}
-makedir(OUTPUT_PATH+"/ear_data")
+makedir(OUTPUT_PATH)
 for filename in os.listdir(BASE_PATH):
    if filename.find('.jpg') == -1:
        continue
    person_id = int(filename.split('-')[0])
-   source_id = int(filename.split('-')[1])  
+   source_id = int(filename.split('-')[1])
    cropped_id = int(filename.split('-')[2])
    if dict_.has_key(person_id) == False:
        dict_[person_id] = []
@@ -45,7 +47,7 @@ all_width = np.zeros(len(indices)*THRESHOULD)
 all_height = np.zeros(len(indices)*THRESHOULD)
 
 for i in indices:
-    new_directory = '%s%d/' %(OUTPUT_PATH+"ear_data/", new_index)
+    new_directory = '%s%d/' %(OUTPUT_PATH, new_index)
     makedir(new_directory)
     list_ = dict_[i]
     for j in range(THRESHOULD):

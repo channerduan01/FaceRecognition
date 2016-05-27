@@ -68,18 +68,18 @@ b = ones([size(features,1),1])*999;
 disp('and (fail) to verify')
 verify(features,samples_num,b,threshold)
 
-%% ROC (Receiver Operating Characteristic curve)
-roc_samples = 100;
-roc_rates = zeros(4,roc_samples);
-for i=1:roc_samples
-    threshold = i/100*10000;
-    a = eer(features,samples_num,threshold);
-    roc_rates(:,i) = a(:);
-end
-
-roc_rates = roc_rates/(subjects_num*samples_num)*100;
-drawROC(roc_rates(2,:),roc_rates(3,:),'false accept vs false reject','false accept','false reject');
-drawROC(roc_rates(2,:),roc_rates(1,:),'ROC PCA','false positive','true possitive');
+% %% ROC (Receiver Operating Characteristic curve)
+% roc_samples = 100;
+% roc_rates = zeros(4,roc_samples);
+% for i=1:roc_samples
+%     threshold = i/100*10000;
+%     a = eer(features,samples_num,threshold);
+%     roc_rates(:,i) = a(:);
+% end
+% 
+% roc_rates = roc_rates/(subjects_num*samples_num)*100;
+% drawROC(roc_rates(2,:),roc_rates(3,:),'false accept vs false reject','false accept','false reject');
+% drawROC(roc_rates(2,:),roc_rates(1,:),'ROC PCA','false positive','true possitive');
 
 
 
